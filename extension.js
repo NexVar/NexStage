@@ -885,7 +885,7 @@ export default class StageArc extends Extension {
             if (this._highlightActive && isActive && grid._cards[0]) {
                 const fc = grid._cards[0].card;
                 fc.style = fc.style.replace(
-                    /border: [^;]+;/, `border: 2px solid rgba(100,160,255,0.6);`
+                    /border: [^;]+;/, `border: 1px solid rgba(120,170,255,0.45);`
                 );
             }
 
@@ -1210,7 +1210,7 @@ export default class StageArc extends Extension {
             if (this._highlightActive && isActive && grid._cards[0]) {
                 const fc = grid._cards[0].card;
                 fc.style = fc.style.replace(
-                    /border: [^;]+;/, 'border: 2px solid rgba(100,160,255,0.6);'
+                    /border: [^;]+;/, 'border: 1px solid rgba(120,170,255,0.45);'
                 );
             }
 
@@ -1968,6 +1968,11 @@ export default class StageArc extends Extension {
     // monitor, then primary.
 
     _pickMonitor() {
+        // Single mode: always use primary monitor so edge trigger works from any monitor
+        if (this._multiMonMode === 'single') {
+            return Main.layoutManager.primaryMonitor;
+        }
+        // Separate mode: follow focus
         const focused = global.display.get_focus_window?.();
         if (focused) {
             const idx = global.display.get_monitor_index_for_rect?.(focused.get_frame_rect());

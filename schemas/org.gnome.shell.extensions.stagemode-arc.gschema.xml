@@ -50,7 +50,7 @@
     </key>
 
     <key name="vert-spacing" type="i">
-      <default>6</default>
+      <default>10</default>
       <range min="0" max="40"/>
       <summary>Vertical Spacing</summary>
       <description>Spacing in pixels between thumbnails in vertical layout mode</description>
