@@ -65,6 +65,7 @@ export default class StageArc extends Extension {
         this._mergeMap      = new Map();
         this._vertOffset    = 0;   // vertical mode scroll offset (index float)
         this._vertVelocity  = 0;
+        this._contextMenu   = null;
 
         this._orderMap = new Map(); // group_key → order index
 
@@ -115,6 +116,7 @@ export default class StageArc extends Extension {
     disable() {
         this._cancelDrag();
         this._teardownKeybindings();
+        if (this._contextMenu) { this._contextMenu.destroy(); this._contextMenu = null; }
 
         if (this._overviewShowSig) { Main.overview.disconnect(this._overviewShowSig); this._overviewShowSig = null; }
         if (this._overviewHideSig)  { Main.overview.disconnect(this._overviewHideSig);  this._overviewHideSig = null; }
@@ -212,6 +214,10 @@ export default class StageArc extends Extension {
         this._layoutMode = s.get_string('layout-mode');
         this._persistEnabled = s.get_boolean('persistent-mode');
         try { this._vertSpacing = s.get_int('vert-spacing'); } catch (_) { this._vertSpacing = 6; }
+        try { this._showCloseBtn = s.get_boolean('show-close-button'); } catch (_) { this._showCloseBtn = true; }
+        try { this._showAppLabel = s.get_boolean('show-app-label'); } catch (_) { this._showAppLabel = true; }
+        try { this._showPanelBg = s.get_boolean('show-panel-background'); } catch (_) { this._showPanelBg = true; }
+        try { this._highlightActive = s.get_boolean('highlight-active'); } catch (_) { this._highlightActive = true; }
         this._geo        = this._computeGeo();
     }
 
@@ -296,13 +302,16 @@ export default class StageArc extends Extension {
     _buildUI() {
         const geo = this._geo;
 
+        const panelStyle = this._showPanelBg
+            ? 'background-color: rgba(20, 20, 22, 0.65); '
+              + 'border-radius: 16px; '
+              + 'box-shadow: 0 4px 24px rgba(0,0,0,0.4); '
+              + 'border: 1px solid rgba(255,255,255,0.06);'
+            : 'background-color: transparent;';
         this._panel = new St.Widget({
             reactive: true,
             clip_to_allocation: true,
-            style: 'background-color: rgba(20, 20, 22, 0.65); '
-                 + 'border-radius: 16px; '
-                 + 'box-shadow: 0 4px 24px rgba(0,0,0,0.4); '
-                 + 'border: 1px solid rgba(255,255,255,0.06);',
+            style: panelStyle,
             width: geo.panelW,
             height: geo.panelH,
         });
@@ -776,7 +785,7 @@ export default class StageArc extends Extension {
             container._grid = grid;
 
             // Active group highlight: bright border on front card
-            if (isActive && grid._cards[0]) {
+            if (this._highlightActive && isActive && grid._cards[0]) {
                 const fc = grid._cards[0].card;
                 fc.style = fc.style.replace(
                     /border: [^;]+;/, `border: 2px solid rgba(100,160,255,0.6);`
@@ -787,20 +796,22 @@ export default class StageArc extends Extension {
 
             this._buildIconRow(container, group, sW, sI, sOvl, sP, scale, grid);
 
-            // App name label
-            const appName = group.app.get_name() || '';
-            const nameLabel = new St.Label({
-                text: appName,
-                style: `color: rgba(255,255,255,${isActive ? '1.0' : '0.85'}); `
-                     + `font-size: ${Math.round(11 * scale)}px; `
-                     + `font-weight: ${isActive ? '600' : '400'}; `
-                     + `text-align: center;`,
-                x_align: Clutter.ActorAlign.CENTER,
-            });
-            nameLabel.set_width(sW + sP * 2);
-            nameLabel.set_position(0, sH + sI - sOvl + Math.round(2 * scale));
-            nameLabel.clutter_text.set_ellipsize(3); // PANGO_ELLIPSIZE_END
-            container.add_child(nameLabel);
+            // App name label (conditional)
+            if (this._showAppLabel) {
+                const appName = group.app.get_name() || '';
+                const nameLabel = new St.Label({
+                    text: appName,
+                    style: `color: rgba(255,255,255,${isActive ? '1.0' : '0.85'}); `
+                         + `font-size: ${Math.round(11 * scale)}px; `
+                         + `font-weight: ${isActive ? '600' : '400'}; `
+                         + `text-align: center;`,
+                    x_align: Clutter.ActorAlign.CENTER,
+                });
+                nameLabel.set_width(sW + sP * 2);
+                nameLabel.set_position(0, sH + sI - sOvl + Math.round(2 * scale));
+                nameLabel.clutter_text.set_ellipsize(3);
+                container.add_child(nameLabel);
+            }
 
             container.connect('notify::hover', () => {
                 if (container.hover) {
@@ -875,9 +886,9 @@ export default class StageArc extends Extension {
             });
 
             container.connect('button-press-event', (_a, event) => {
-                if (event.get_button() === 3 && group.appIds.length > 1) {
-                    group.appIds.forEach(id => this._unmergeApp(id));
-                    this._refresh();
+                if (event.get_button() === 3) {
+                    const [px, py] = global.get_pointer();
+                    this._showContextMenu(group, px, py);
                     return Clutter.EVENT_STOP;
                 }
                 if (event.get_button() === 1) {
@@ -1052,7 +1063,7 @@ export default class StageArc extends Extension {
             container._dim  = null;
 
             // Active group highlight: bright border on front card
-            if (isActive && grid._cards[0]) {
+            if (this._highlightActive && isActive && grid._cards[0]) {
                 const fc = grid._cards[0].card;
                 fc.style = fc.style.replace(
                     /border: [^;]+;/, 'border: 2px solid rgba(100,160,255,0.6);'
@@ -1061,20 +1072,22 @@ export default class StageArc extends Extension {
 
             this._buildIconRow(container, group, sW, sI, sOvl, sP, 1.0, grid);
 
-            // App name label
-            const appName = group.app.get_name() || '';
-            const nameLabel = new St.Label({
-                text: appName,
-                style: `color: rgba(255,255,255,${isActive ? '1.0' : '0.75'}); `
-                     + `font-size: 11px; `
-                     + `font-weight: ${isActive ? '600' : '400'}; `
-                     + `text-align: center;`,
-                x_align: Clutter.ActorAlign.CENTER,
-            });
-            nameLabel.set_width(sW + sP * 2);
-            nameLabel.set_position(0, sH + sI - sOvl + 2);
-            nameLabel.clutter_text.set_ellipsize(3);
-            container.add_child(nameLabel);
+            // App name label (conditional)
+            if (this._showAppLabel) {
+                const appName = group.app.get_name() || '';
+                const nameLabel = new St.Label({
+                    text: appName,
+                    style: `color: rgba(255,255,255,${isActive ? '1.0' : '0.75'}); `
+                         + `font-size: 11px; `
+                         + `font-weight: ${isActive ? '600' : '400'}; `
+                         + `text-align: center;`,
+                    x_align: Clutter.ActorAlign.CENTER,
+                });
+                nameLabel.set_width(sW + sP * 2);
+                nameLabel.set_position(0, sH + sI - sOvl + 2);
+                nameLabel.clutter_text.set_ellipsize(3);
+                container.add_child(nameLabel);
+            }
 
             container.connect('notify::hover', () => {
                 if (container.hover) {
@@ -1149,9 +1162,9 @@ export default class StageArc extends Extension {
             });
 
             container.connect('button-press-event', (_a, event) => {
-                if (event.get_button() === 3 && group.appIds.length > 1) {
-                    group.appIds.forEach(id => this._unmergeApp(id));
-                    this._refresh();
+                if (event.get_button() === 3) {
+                    const [px, py] = global.get_pointer();
+                    this._showContextMenu(group, px, py);
                     return Clutter.EVENT_STOP;
                 }
                 if (event.get_button() === 1) {
@@ -1349,8 +1362,9 @@ export default class StageArc extends Extension {
             card.add_child(closeBtn);
             grid._closeBtns.push(closeBtn);
 
-            // Show/hide close button on card hover
+            // Show/hide close button on card hover (respects setting)
             card.connect('notify::hover', () => {
+                if (!this._showCloseBtn) return;
                 closeBtn.ease({
                     opacity: card.hover ? 255 : 0,
                     duration: 150,
@@ -1468,6 +1482,98 @@ export default class StageArc extends Extension {
         });
         grid._fanned = true;
         return { shift: (count - 1) * step, isBottom };
+    }
+
+    // ── Context Menu ─────────────────────────────────────────────────────────
+
+    _showContextMenu(group, px, py) {
+        if (this._contextMenu) {
+            this._contextMenu.destroy();
+            this._contextMenu = null;
+        }
+
+        const win = group.windows[0];
+        if (!win) return;
+
+        const menu = new St.BoxLayout({
+            vertical: true,
+            reactive: true,
+            style: 'background-color: rgba(30, 30, 34, 0.92); '
+                 + 'border-radius: 12px; '
+                 + 'padding: 6px 0; '
+                 + 'box-shadow: 0 6px 20px rgba(0,0,0,0.5); '
+                 + 'border: 1px solid rgba(255,255,255,0.1);',
+        });
+
+        const items = [
+            { label: 'Close Window', action: () => {
+                win.delete(global.get_current_time());
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => { this._refresh(); return GLib.SOURCE_REMOVE; });
+            }},
+            { label: 'Minimize', action: () => {
+                win.minimize();
+                this._refresh();
+            }},
+            { label: win.is_above() ? 'Unpin from Top' : 'Always on Top', action: () => {
+                if (win.is_above()) win.unmake_above();
+                else win.make_above();
+            }},
+        ];
+
+        // Add ungroup option if merged
+        if (group.appIds.length > 1) {
+            items.push({ label: 'Ungroup Apps', action: () => {
+                group.appIds.forEach(id => this._unmergeApp(id));
+                this._refresh();
+            }});
+        }
+
+        items.forEach(({ label, action }) => {
+            const item = new St.Button({
+                reactive: true,
+                track_hover: true,
+                x_expand: true,
+                style: 'padding: 8px 16px; '
+                     + 'border-radius: 0; '
+                     + 'text-align: left;',
+            });
+            item.set_child(new St.Label({
+                text: label,
+                style: 'color: rgba(255,255,255,0.9); font-size: 13px;',
+            }));
+            item.connect('enter-event', () => {
+                item.style = 'padding: 8px 16px; border-radius: 0; '
+                           + 'background-color: rgba(100,160,255,0.3);';
+            });
+            item.connect('leave-event', () => {
+                item.style = 'padding: 8px 16px; border-radius: 0; text-align: left;';
+            });
+            item.connect('clicked', () => {
+                action();
+                if (this._contextMenu) {
+                    this._contextMenu.destroy();
+                    this._contextMenu = null;
+                }
+            });
+            menu.add_child(item);
+        });
+
+        menu.set_position(px, py);
+        Main.uiGroup.add_child(menu);
+        this._contextMenu = menu;
+
+        // Auto-close on click outside
+        const clickId = global.stage.connect('button-press-event', () => {
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+                if (this._contextMenu) {
+                    this._contextMenu.destroy();
+                    this._contextMenu = null;
+                }
+                global.stage.disconnect(clickId);
+                return GLib.SOURCE_REMOVE;
+            });
+            return Clutter.EVENT_PROPAGATE;
+        });
     }
 
     // ── Activate ──────────────────────────────────────────────────────────────

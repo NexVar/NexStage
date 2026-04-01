@@ -80,6 +80,55 @@ export default class StageArcPreferences extends ExtensionPreferences {
         );
         layoutGroup.add(angleRow);
 
+        // ── Visual Features Group ────────────────────────────────────────────
+
+        const visualGroup = new Adw.PreferencesGroup({ title: 'Visual Features' });
+        layoutPage.add(visualGroup);
+
+        // Close button toggle
+        const closeBtnRow = new Adw.SwitchRow({
+            title: 'Close Button',
+            subtitle: 'Show close button on thumbnail cards when hovered',
+        });
+        closeBtnRow.active = settings.get_boolean('show-close-button');
+        closeBtnRow.connect('notify::active', () =>
+            settings.set_boolean('show-close-button', closeBtnRow.active)
+        );
+        visualGroup.add(closeBtnRow);
+
+        // App label toggle
+        const labelRow = new Adw.SwitchRow({
+            title: 'App Name Labels',
+            subtitle: 'Show application name below each thumbnail',
+        });
+        labelRow.active = settings.get_boolean('show-app-label');
+        labelRow.connect('notify::active', () =>
+            settings.set_boolean('show-app-label', labelRow.active)
+        );
+        visualGroup.add(labelRow);
+
+        // Panel background toggle
+        const bgRow = new Adw.SwitchRow({
+            title: 'Panel Background',
+            subtitle: 'Semi-transparent dark background behind the panel',
+        });
+        bgRow.active = settings.get_boolean('show-panel-background');
+        bgRow.connect('notify::active', () =>
+            settings.set_boolean('show-panel-background', bgRow.active)
+        );
+        visualGroup.add(bgRow);
+
+        // Active highlight toggle
+        const highlightRow = new Adw.SwitchRow({
+            title: 'Highlight Active App',
+            subtitle: 'Blue border on the currently focused app',
+        });
+        highlightRow.active = settings.get_boolean('highlight-active');
+        highlightRow.connect('notify::active', () =>
+            settings.set_boolean('highlight-active', highlightRow.active)
+        );
+        visualGroup.add(highlightRow);
+
         // ── Page: Behavior ───────────────────────────────────────────────────
 
         const behavPage = new Adw.PreferencesPage({

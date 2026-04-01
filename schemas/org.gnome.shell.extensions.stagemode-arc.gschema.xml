@@ -68,6 +68,30 @@
       <description>JSON map of app_id to group_key for merged groups</description>
     </key>
 
+    <key name="show-close-button" type="b">
+      <default>true</default>
+      <summary>Show Close Button</summary>
+      <description>Show close button on thumbnail cards on hover</description>
+    </key>
+
+    <key name="show-app-label" type="b">
+      <default>true</default>
+      <summary>Show App Label</summary>
+      <description>Show application name label below thumbnails</description>
+    </key>
+
+    <key name="show-panel-background" type="b">
+      <default>true</default>
+      <summary>Panel Background</summary>
+      <description>Show semi-transparent background behind the panel</description>
+    </key>
+
+    <key name="highlight-active" type="b">
+      <default>true</default>
+      <summary>Highlight Active App</summary>
+      <description>Highlight the currently focused app with a border</description>
+    </key>
+
     <key name="keybinding-toggle" type="as">
       <default><![CDATA[['']]]></default>
       <summary>Toggle Panel</summary>
