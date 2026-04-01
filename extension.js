@@ -283,6 +283,7 @@ export default class StageArc extends Extension {
         try { this._showBadge = s.get_boolean('show-window-count'); } catch (_) { this._showBadge = true; }
         try { this._showTooltipEnabled = s.get_boolean('show-tooltip'); } catch (_) { this._showTooltipEnabled = true; }
         try { this._panelMargin = s.get_int('panel-margin'); } catch (_) { this._panelMargin = 8; }
+        try { this._multiMonMode = s.get_string('multi-monitor-mode'); } catch (_) { this._multiMonMode = 'single'; }
         this._geo        = this._computeGeo();
     }
 
@@ -429,14 +430,18 @@ export default class StageArc extends Extension {
     // ── Polls ─────────────────────────────────────────────────────────────────
 
     _startPolls() {
-        this._pollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 32, () => {
+        // Poll at 50ms when active (drag/visible), skip cheaply when idle
+        this._pollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT_IDLE, 50, () => {
+            // Fast path: skip pointer query when nothing is happening
+            if (!this._isVisible && !this._dragging && !this._dragCandidate) {
+                return GLib.SOURCE_CONTINUE;
+            }
+
             const [px, py, mask] = global.get_pointer();
             const mon  = this._monitor;
             const held = !!(mask & Clutter.ModifierType.BUTTON1_MASK);
 
-            // Skip all work when panel is hidden and nothing interactive is pending
-            const idle = !this._isVisible && !this._dragging && !this._dragCandidate;
-            if (!idle || held) {
+            if (true) {
                 if (!this._dragging) {
                     let hot = false;
                     if      (this._pos === 'bottom') hot = py >= mon.y + mon.height - 8;
@@ -721,8 +726,21 @@ export default class StageArc extends Extension {
         const tracker   = Shell.WindowTracker.get_default();
         const byApp     = {};
 
+        const filterByMonitor = this._multiMonMode === 'separate';
+        const mon = this._monitor;
+
         workspace.list_windows().forEach(win => {
             if (win.skip_taskbar || !win.get_compositor_private() || win.is_attached_dialog()) return;
+
+            // In separate mode, only show windows on this monitor
+            if (filterByMonitor) {
+                const r = win.get_frame_rect();
+                const cx = r.x + r.width / 2;
+                const cy = r.y + r.height / 2;
+                if (cx < mon.x || cx >= mon.x + mon.width || cy < mon.y || cy >= mon.y + mon.height)
+                    return;
+            }
+
             const app = tracker.get_window_app(win);
             if (!app) return;
             const id = app.get_id();
@@ -879,16 +897,19 @@ export default class StageArc extends Extension {
             // App name label (conditional)
             if (this._showAppLabel) {
                 const appName = group.app.get_name() || '';
+                const fontSize = Math.max(12, Math.round(13 * scale));
                 const nameLabel = new St.Label({
                     text: appName,
-                    style: `color: rgba(255,255,255,${isActive ? '1.0' : '0.85'}); `
-                         + `font-size: ${Math.round(11 * scale)}px; `
-                         + `font-weight: ${isActive ? '600' : '400'}; `
-                         + `text-align: center;`,
+                    style: `color: rgba(255,255,255,${isActive ? '1.0' : '0.78'}); `
+                         + `font-size: ${fontSize}px; `
+                         + `font-weight: ${isActive ? '600' : '500'}; `
+                         + `font-family: system-ui, sans-serif; `
+                         + `text-align: center; `
+                         + `text-shadow: 0 1px 2px rgba(0,0,0,0.5);`,
                     x_align: Clutter.ActorAlign.CENTER,
                 });
                 nameLabel.set_width(sW + sP * 2);
-                nameLabel.set_position(0, sH + sI - sOvl + Math.round(2 * scale));
+                nameLabel.set_position(0, sH + sI - sOvl + Math.round(3 * scale));
                 nameLabel.clutter_text.set_ellipsize(3);
                 container.add_child(nameLabel);
             }
@@ -1201,14 +1222,16 @@ export default class StageArc extends Extension {
                 const appName = group.app.get_name() || '';
                 const nameLabel = new St.Label({
                     text: appName,
-                    style: `color: rgba(255,255,255,${isActive ? '1.0' : '0.75'}); `
-                         + `font-size: 11px; `
-                         + `font-weight: ${isActive ? '600' : '400'}; `
-                         + `text-align: center;`,
+                    style: `color: rgba(255,255,255,${isActive ? '1.0' : '0.78'}); `
+                         + `font-size: 13px; `
+                         + `font-weight: ${isActive ? '600' : '500'}; `
+                         + `font-family: system-ui, sans-serif; `
+                         + `text-align: center; `
+                         + `text-shadow: 0 1px 2px rgba(0,0,0,0.5);`,
                     x_align: Clutter.ActorAlign.CENTER,
                 });
                 nameLabel.set_width(sW + sP * 2);
-                nameLabel.set_position(0, sH + sI - sOvl + 2);
+                nameLabel.set_position(0, sH + sI - sOvl + 3);
                 nameLabel.clutter_text.set_ellipsize(3);
                 container.add_child(nameLabel);
             }

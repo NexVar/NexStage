@@ -56,6 +56,12 @@
       <description>Spacing in pixels between thumbnails in vertical layout mode</description>
     </key>
 
+    <key name="multi-monitor-mode" type="s">
+      <default>'single'</default>
+      <summary>Multi-Monitor Mode</summary>
+      <description>single = one panel controls all monitors, separate = each monitor has its own panel</description>
+    </key>
+
     <key name="order-map" type="s">
       <default>'{}'</default>
       <summary>Order Map</summary>

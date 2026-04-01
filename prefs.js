@@ -176,6 +176,28 @@ export default class StageArcPreferences extends ExtensionPreferences {
         panelGroup.add(this._spinRow(settings, 'max-recent-groups',
             'Max Recent Groups', 'Maximum number of app groups shown in sidebar',
             3, 12, 1));
+
+        // ── Multi-Monitor ──
+        const monitorGroup = new Adw.PreferencesGroup({
+            title: 'Multi-Monitor',
+            description: 'How Stage Manager works with multiple displays',
+        });
+        page.add(monitorGroup);
+
+        const multiMonRow = new Adw.ComboRow({
+            title: 'Monitor Mode',
+            subtitle: 'Single panel for all monitors or separate per display',
+            model: new Gtk.StringList({ strings: [
+                'Single — one panel controls all monitors',
+                'Separate — each monitor has its own panel',
+            ]}),
+        });
+        const multiMonValues = ['single', 'separate'];
+        multiMonRow.selected = multiMonValues.indexOf(settings.get_string('multi-monitor-mode'));
+        multiMonRow.connect('notify::selected', () =>
+            settings.set_string('multi-monitor-mode', multiMonValues[multiMonRow.selected])
+        );
+        monitorGroup.add(multiMonRow);
     }
 
     // ── Page: Animation ──────────────────────────────────────────────────────
