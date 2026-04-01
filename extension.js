@@ -163,7 +163,23 @@ export default class StageArc extends Extension {
         const ws = global.workspace_manager.get_active_workspace();
         if (!ws) return;
         this._wsWinAddedSig = ws.connect('window-added', () => this._refresh());
-        this._wsWinRemovedSig = ws.connect('window-removed', () => this._refresh());
+        this._wsWinRemovedSig = ws.connect('window-removed', (_ws, removedWin) => {
+            // Animate the removed window's container shrinking away
+            const container = this._containers.find(c => {
+                return c._groupRef?.windows?.includes(removedWin);
+            });
+            if (container && this._isVisible) {
+                container.ease({
+                    scale_x: 0.3, scale_y: 0.3,
+                    opacity: 0,
+                    duration: 250,
+                    mode: Clutter.AnimationMode.EASE_IN_BACK,
+                    onComplete: () => this._refresh(),
+                });
+            } else {
+                this._refresh();
+            }
+        });
         this._activeWs = ws;
     }
 
