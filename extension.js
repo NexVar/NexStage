@@ -819,8 +819,8 @@ export default class StageArc extends Extension {
 
             // Inactive tilt for arc layout
             if (!isActive) {
-                container.set_rotation_angle(Clutter.RotateAxis.Z_AXIS, -2.0);
-                container.set_scale(0.92, 0.92);
+                container.set_rotation_angle(Clutter.RotateAxis.Y_AXIS, 6.0);
+                container.set_scale(0.93, 0.93);
             }
 
             container._baseX       = baseX;
@@ -871,7 +871,7 @@ export default class StageArc extends Extension {
                         c.ease({
                             scale_x: isThis ? 1.0 : 0.88,
                             scale_y: isThis ? 1.0 : 0.88,
-                            rotation_angle_z: isThis ? 0 : (c._isActive ? 0 : -2.0),
+                            rotation_angle_y: isThis ? 0 : (c._isActive ? 0 : 6.0),
                             duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                         });
                     });
@@ -943,7 +943,7 @@ export default class StageArc extends Extension {
                                         x: c._baseX, y: c._baseY,
                                         scale_x: c._isActive ? 1.0 : 0.92,
                                         scale_y: c._isActive ? 1.0 : 0.92,
-                                        rotation_angle_z: c._isActive ? 0 : -2.0,
+                                        rotation_angle_y: c._isActive ? 0 : 6.0,
                                         duration: 260, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                                     });
                                 });
@@ -958,7 +958,7 @@ export default class StageArc extends Extension {
                                 x: c._baseX, y: c._baseY,
                                 scale_x: c._isActive ? 1.0 : 0.92,
                                 scale_y: c._isActive ? 1.0 : 0.92,
-                                rotation_angle_z: c._isActive ? 0 : -2.0,
+                                rotation_angle_y: c._isActive ? 0 : 6.0,
                                 duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                             });
                         });
@@ -1121,7 +1121,7 @@ export default class StageArc extends Extension {
             const sP   = PAD_H;
             const labelH = 16;
             const totH = sH + sI - sOvl + labelH;
-            const posX = 0;
+            const posX = 8;
             const posY = Math.round(startY + idx * (ITEM_H + SPACING));
 
             // Skip if completely outside panel
@@ -1138,10 +1138,10 @@ export default class StageArc extends Extension {
             container.set_pivot_point(0.5, 0.5);
             container.set_position(posX, posY);
 
-            // Inactive tilt: macOS-style slight rotation for non-active groups
+            // Inactive tilt: macOS-style perspective tilt (Y-axis = inward lean)
             if (!isActive) {
-                container.set_rotation_angle(Clutter.RotateAxis.Z_AXIS, -2.0);
-                container.set_scale(0.92, 0.92);
+                container.set_rotation_angle(Clutter.RotateAxis.Y_AXIS, 6.0);
+                container.set_scale(0.93, 0.93);
             }
 
             container._baseX       = posX;
@@ -1191,7 +1191,7 @@ export default class StageArc extends Extension {
                         c.ease({
                             scale_x: isThis ? 1.0 : 0.88,
                             scale_y: isThis ? 1.0 : 0.88,
-                            rotation_angle_z: isThis ? 0 : (c._isActive ? 0 : -2.0),
+                            rotation_angle_y: isThis ? 0 : (c._isActive ? 0 : 6.0),
                             duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                         });
                     });
@@ -1264,7 +1264,7 @@ export default class StageArc extends Extension {
                                         x: c._baseX, y: c._baseY,
                                         scale_x: c._isActive ? 1.0 : 0.92,
                                         scale_y: c._isActive ? 1.0 : 0.92,
-                                        rotation_angle_z: c._isActive ? 0 : -2.0,
+                                        rotation_angle_y: c._isActive ? 0 : 6.0,
                                         duration: 260, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                                     });
                                 });
@@ -1280,7 +1280,7 @@ export default class StageArc extends Extension {
                                 x: c._baseX, y: c._baseY,
                                 scale_x: c._isActive ? 1.0 : 0.92,
                                 scale_y: c._isActive ? 1.0 : 0.92,
-                                rotation_angle_z: c._isActive ? 0 : -2.0,
+                                rotation_angle_y: c._isActive ? 0 : 6.0,
                                 duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                             });
                         });
@@ -1963,9 +1963,9 @@ export default class StageArc extends Extension {
                 c.ease({
                     x: origX, y: origY,
                     opacity: 255,
-                    scale_x: c._isActive ? 1.0 : 0.92,
-                    scale_y: c._isActive ? 1.0 : 0.92,
-                    rotation_angle_z: c._isActive ? 0 : -2.0,
+                    scale_x: c._isActive ? 1.0 : 0.93,
+                    scale_y: c._isActive ? 1.0 : 0.93,
+                    rotation_angle_y: c._isActive ? 0 : 6.0,
                     duration: 350,
                     mode: Clutter.AnimationMode.EASE_OUT_BACK,
                 });
