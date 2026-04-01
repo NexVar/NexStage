@@ -92,6 +92,12 @@
       <description>Highlight the currently focused app with a border</description>
     </key>
 
+    <key name="close-button-position" type="s">
+      <default>'right'</default>
+      <summary>Close Button Position</summary>
+      <description>Position of close button on cards: left or right</description>
+    </key>
+
     <key name="keybinding-toggle" type="as">
       <default><![CDATA[['']]]></default>
       <summary>Toggle Panel</summary>

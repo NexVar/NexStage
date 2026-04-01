@@ -96,6 +96,20 @@ export default class StageArcPreferences extends ExtensionPreferences {
         );
         visualGroup.add(closeBtnRow);
 
+        // Close button position
+        const closePosRow = new Adw.ComboRow({
+            title: 'Close Button Position',
+            subtitle: 'Which corner the close button appears in',
+            model: new Gtk.StringList({ strings: ['Right', 'Left'] }),
+        });
+        const closePosValues = ['right', 'left'];
+        const closePosMap = { right: 0, left: 1 };
+        closePosRow.selected = closePosMap[settings.get_string('close-button-position')] ?? 0;
+        closePosRow.connect('notify::selected', () =>
+            settings.set_string('close-button-position', closePosValues[closePosRow.selected])
+        );
+        visualGroup.add(closePosRow);
+
         // App label toggle
         const labelRow = new Adw.SwitchRow({
             title: 'App Name Labels',

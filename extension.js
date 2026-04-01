@@ -218,6 +218,7 @@ export default class StageArc extends Extension {
         try { this._showAppLabel = s.get_boolean('show-app-label'); } catch (_) { this._showAppLabel = true; }
         try { this._showPanelBg = s.get_boolean('show-panel-background'); } catch (_) { this._showPanelBg = true; }
         try { this._highlightActive = s.get_boolean('highlight-active'); } catch (_) { this._highlightActive = true; }
+        try { this._closeBtnPos = s.get_string('close-button-position'); } catch (_) { this._closeBtnPos = 'right'; }
         this._geo        = this._computeGeo();
     }
 
@@ -771,13 +772,20 @@ export default class StageArc extends Extension {
             });
             container.set_pivot_point(0.5, 0.5);
             container.set_position(baseX, baseY);
+            // Active group detection
+            const isActive = focusedAppId && group.appIds.includes(focusedAppId);
+
+            // Inactive tilt for arc layout
+            if (!isActive) {
+                container.set_rotation_angle(Clutter.RotateAxis.Z_AXIS, -2.0);
+                container.set_scale(0.92, 0.92);
+            }
+
             container._baseX       = baseX;
             container._baseY       = baseY;
             container._baseOpacity = alpha;
             container._groupRef    = group;
-
-            // Active group detection
-            const isActive = focusedAppId && group.appIds.includes(focusedAppId);
+            container._isActive    = isActive;
 
             const grid = this._buildGrid(group, sW, sH, scale);
             grid.set_position(sP, 0);
@@ -817,8 +825,12 @@ export default class StageArc extends Extension {
                 if (container.hover) {
                     this._containers.forEach(c => {
                         const isThis = c === container;
-                        c.ease({ scale_x: isThis ? 1.06 : 0.96, scale_y: isThis ? 1.06 : 0.96,
-                            duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
+                        c.ease({
+                            scale_x: isThis ? 1.0 : 0.88,
+                            scale_y: isThis ? 1.0 : 0.88,
+                            rotation_angle_z: isThis ? 0 : (c._isActive ? 0 : -2.0),
+                            duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
+                        });
                     });
                     // Highlight hovered card border
                     const frontCard = grid._cards[0]?.card;
@@ -842,7 +854,7 @@ export default class StageArc extends Extension {
                                     c.ease({
                                         x: c._baseX + (after && isBottom  ? shift : 0),
                                         y: c._baseY + (after && !isBottom ? shift : 0),
-                                        scale_x: 0.92, scale_y: 0.92,
+                                        scale_x: 0.88, scale_y: 0.88,
                                         duration: 280, mode: Clutter.AnimationMode.EASE_OUT_BACK,
                                     });
                                 });
@@ -868,8 +880,13 @@ export default class StageArc extends Extension {
                             if (!container.hover) {
                                 this._positionStack(g);
                                 this._containers.forEach(c => {
-                                    c.ease({ x: c._baseX, y: c._baseY, scale_x: 1.0, scale_y: 1.0,
-                                        duration: 260, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
+                                    c.ease({
+                                        x: c._baseX, y: c._baseY,
+                                        scale_x: c._isActive ? 1.0 : 0.92,
+                                        scale_y: c._isActive ? 1.0 : 0.92,
+                                        rotation_angle_z: c._isActive ? 0 : -2.0,
+                                        duration: 260, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
+                                    });
                                 });
                             }
                             return GLib.SOURCE_REMOVE;
@@ -878,8 +895,13 @@ export default class StageArc extends Extension {
 
                     if (!this._containers.some(c => c.hover)) {
                         this._containers.forEach(c => {
-                            c.ease({ x: c._baseX, y: c._baseY, scale_x: 1.0, scale_y: 1.0,
-                                duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
+                            c.ease({
+                                x: c._baseX, y: c._baseY,
+                                scale_x: c._isActive ? 1.0 : 0.92,
+                                scale_y: c._isActive ? 1.0 : 0.92,
+                                rotation_angle_z: c._isActive ? 0 : -2.0,
+                                duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
+                            });
                         });
                     }
                 }
@@ -1051,10 +1073,18 @@ export default class StageArc extends Extension {
             });
             container.set_pivot_point(0.5, 0.5);
             container.set_position(posX, posY);
+
+            // Inactive tilt: macOS-style slight rotation for non-active groups
+            if (!isActive) {
+                container.set_rotation_angle(Clutter.RotateAxis.Z_AXIS, -2.0);
+                container.set_scale(0.92, 0.92);
+            }
+
             container._baseX       = posX;
             container._baseY       = posY;
             container._baseOpacity = 255;
             container._groupRef    = group;
+            container._isActive    = isActive;
 
             const grid = this._buildGrid(group, sW, sH, 1.0);
             grid.set_position(sP, 0);
@@ -1093,8 +1123,13 @@ export default class StageArc extends Extension {
                 if (container.hover) {
                     this._containers.forEach(c => {
                         const isThis = c === container;
-                        c.ease({ scale_x: isThis ? 1.06 : 0.97, scale_y: isThis ? 1.06 : 0.97,
-                            duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
+                        // Hovered: straighten and scale up; others: shrink
+                        c.ease({
+                            scale_x: isThis ? 1.0 : 0.88,
+                            scale_y: isThis ? 1.0 : 0.88,
+                            rotation_angle_z: isThis ? 0 : (c._isActive ? 0 : -2.0),
+                            duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
+                        });
                     });
                     // Highlight hovered card border
                     const frontCard = grid._cards[0]?.card;
@@ -1118,7 +1153,7 @@ export default class StageArc extends Extension {
                                     c.ease({
                                         x: c._baseX + (after && isBottom  ? shift : 0),
                                         y: c._baseY + (after && !isBottom ? shift : 0),
-                                        scale_x: 0.92, scale_y: 0.92,
+                                        scale_x: 0.88, scale_y: 0.88,
                                         duration: 280, mode: Clutter.AnimationMode.EASE_OUT_BACK,
                                     });
                                 });
@@ -1143,9 +1178,15 @@ export default class StageArc extends Extension {
                             g._closeTimer = null;
                             if (!container.hover) {
                                 this._positionStack(g);
+                                // Restore tilt for inactive containers
                                 this._containers.forEach(c => {
-                                    c.ease({ x: c._baseX, y: c._baseY, scale_x: 1.0, scale_y: 1.0,
-                                        duration: 260, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
+                                    c.ease({
+                                        x: c._baseX, y: c._baseY,
+                                        scale_x: c._isActive ? 1.0 : 0.92,
+                                        scale_y: c._isActive ? 1.0 : 0.92,
+                                        rotation_angle_z: c._isActive ? 0 : -2.0,
+                                        duration: 260, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
+                                    });
                                 });
                             }
                             return GLib.SOURCE_REMOVE;
@@ -1153,9 +1194,15 @@ export default class StageArc extends Extension {
                     }
 
                     if (!this._containers.some(c => c.hover)) {
+                        // Restore tilt for inactive containers
                         this._containers.forEach(c => {
-                            c.ease({ x: c._baseX, y: c._baseY, scale_x: 1.0, scale_y: 1.0,
-                                duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
+                            c.ease({
+                                x: c._baseX, y: c._baseY,
+                                scale_x: c._isActive ? 1.0 : 0.92,
+                                scale_y: c._isActive ? 1.0 : 0.92,
+                                rotation_angle_z: c._isActive ? 0 : -2.0,
+                                duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
+                            });
                         });
                     }
                 }
@@ -1338,7 +1385,10 @@ export default class StageArc extends Extension {
                      + `border: 1px solid rgba(255,255,255,0.2); `
                      + `box-shadow: 0 1px 3px rgba(0,0,0,0.4);`,
             });
-            closeBtn.set_position(btnMargin, btnMargin);
+            const closeBtnX = this._closeBtnPos === 'left'
+                ? btnMargin
+                : cW - btnSize - btnMargin;
+            closeBtn.set_position(closeBtnX, btnMargin);
             closeBtn.set_pivot_point(0.5, 0.5);
 
             // X label inside close button
