@@ -66,6 +66,8 @@ export default class StageArc extends Extension {
         this._vertOffset    = 0;   // vertical mode scroll offset (index float)
         this._vertVelocity  = 0;
         this._contextMenu   = null;
+        this._tooltip       = null;
+        this._tooltipTimer  = null;
 
         this._orderMap = new Map(); // group_key → order index
 
@@ -117,6 +119,8 @@ export default class StageArc extends Extension {
         this._cancelDrag();
         this._teardownKeybindings();
         if (this._contextMenu) { this._contextMenu.destroy(); this._contextMenu = null; }
+        this._hideTooltip();
+        if (this._tooltipTimer) { GLib.source_remove(this._tooltipTimer); this._tooltipTimer = null; }
 
         if (this._overviewShowSig) { Main.overview.disconnect(this._overviewShowSig); this._overviewShowSig = null; }
         if (this._overviewHideSig)  { Main.overview.disconnect(this._overviewHideSig);  this._overviewHideSig = null; }
@@ -803,6 +807,7 @@ export default class StageArc extends Extension {
             container._dim = null; // dims are now per-cell inside grid._dimCells
 
             this._buildIconRow(container, group, sW, sI, sOvl, sP, scale, grid);
+            this._buildBadge(container, group, sW, sH, sP, scale);
 
             // App name label (conditional)
             if (this._showAppLabel) {
@@ -832,13 +837,23 @@ export default class StageArc extends Extension {
                             duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                         });
                     });
-                    // Highlight hovered card border
                     const frontCard = grid._cards[0]?.card;
                     if (frontCard) {
                         frontCard.style = frontCard.style.replace(
                             /border: [^;]+;/, 'border: 1px solid rgba(255,255,255,0.25);'
                         );
                     }
+                    // Tooltip after short delay
+                    if (this._tooltipTimer) { GLib.source_remove(this._tooltipTimer); this._tooltipTimer = null; }
+                    this._tooltipTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
+                        this._tooltipTimer = null;
+                        if (container.hover) this._showTooltip(container, group);
+                        return GLib.SOURCE_REMOVE;
+                    });
+                    // Dim back cards
+                    grid._dimCells.forEach((dim, i) => {
+                        if (i > 0) dim.ease({ opacity: 100, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+                    });
                     // Fan stack after 350ms hold
                     const g = container._grid;
                     if (g && !g._fanned && !g._fanTimer) {
@@ -863,7 +878,13 @@ export default class StageArc extends Extension {
                         });
                     }
                 } else {
-                    // Reset card border
+                    // Hide tooltip
+                    if (this._tooltipTimer) { GLib.source_remove(this._tooltipTimer); this._tooltipTimer = null; }
+                    this._hideTooltip();
+                    // Un-dim back cards
+                    grid._dimCells.forEach((dim, i) => {
+                        if (i > 0) dim.ease({ opacity: 0, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+                    });
                     const frontCard = grid._cards[0]?.card;
                     if (frontCard) {
                         frontCard.style = frontCard.style.replace(
@@ -985,7 +1006,11 @@ export default class StageArc extends Extension {
                 by = sH - sz + ovf - i * dY;
             }
 
-            const icon = new St.Widget({ width: sz, height: sz, reactive: false });
+            const icon = new St.Widget({
+                width: sz, height: sz, reactive: false,
+                style: `border-radius: ${Math.round(sz * 0.22)}px; `
+                     + `box-shadow: 0 2px 6px rgba(0,0,0,0.4);`,
+            });
             icon.add_child(app.create_icon_texture(sz));
             icon.set_position(bx, by);
             container.add_child(icon);
@@ -1101,6 +1126,7 @@ export default class StageArc extends Extension {
             }
 
             this._buildIconRow(container, group, sW, sI, sOvl, sP, 1.0, grid);
+            this._buildBadge(container, group, sW, sH, sP, 1.0);
 
             // App name label (conditional)
             if (this._showAppLabel) {
@@ -1123,7 +1149,6 @@ export default class StageArc extends Extension {
                 if (container.hover) {
                     this._containers.forEach(c => {
                         const isThis = c === container;
-                        // Hovered: straighten and scale up; others: shrink
                         c.ease({
                             scale_x: isThis ? 1.0 : 0.88,
                             scale_y: isThis ? 1.0 : 0.88,
@@ -1131,13 +1156,23 @@ export default class StageArc extends Extension {
                             duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                         });
                     });
-                    // Highlight hovered card border
                     const frontCard = grid._cards[0]?.card;
                     if (frontCard) {
                         frontCard.style = frontCard.style.replace(
                             /border: [^;]+;/, 'border: 1px solid rgba(255,255,255,0.25);'
                         );
                     }
+                    // Tooltip after short delay
+                    if (this._tooltipTimer) { GLib.source_remove(this._tooltipTimer); this._tooltipTimer = null; }
+                    this._tooltipTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 600, () => {
+                        this._tooltipTimer = null;
+                        if (container.hover) this._showTooltip(container, group);
+                        return GLib.SOURCE_REMOVE;
+                    });
+                    // Dim back cards
+                    grid._dimCells.forEach((dim, i) => {
+                        if (i > 0) dim.ease({ opacity: 100, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+                    });
                     // Fan stack after 350ms hold
                     const g = container._grid;
                     if (g && !g._fanned && !g._fanTimer) {
@@ -1162,7 +1197,13 @@ export default class StageArc extends Extension {
                         });
                     }
                 } else {
-                    // Reset card border
+                    // Hide tooltip
+                    if (this._tooltipTimer) { GLib.source_remove(this._tooltipTimer); this._tooltipTimer = null; }
+                    this._hideTooltip();
+                    // Un-dim back cards
+                    grid._dimCells.forEach((dim, i) => {
+                        if (i > 0) dim.ease({ opacity: 0, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+                    });
                     const frontCard = grid._cards[0]?.card;
                     if (frontCard) {
                         frontCard.style = frontCard.style.replace(
@@ -1457,6 +1498,70 @@ export default class StageArc extends Extension {
         return grid;
     }
 
+    // ── Window count badge ─────────────────────────────────────────────────────
+
+    _buildBadge(container, group, gridW, gridH, padH, scale) {
+        const count = group.windows.length;
+        if (count <= 1) return;
+
+        const badgeSize = Math.round(18 * scale);
+        const badge = new St.Label({
+            text: `${count}`,
+            style: `background-color: rgba(255,255,255,0.15); `
+                 + `color: rgba(255,255,255,0.9); `
+                 + `font-size: ${Math.round(10 * scale)}px; `
+                 + `font-weight: 700; `
+                 + `border-radius: ${Math.round(badgeSize / 2)}px; `
+                 + `text-align: center; `
+                 + `padding: 0 ${Math.round(4 * scale)}px; `
+                 + `min-width: ${badgeSize}px; `
+                 + `min-height: ${badgeSize}px;`,
+        });
+        badge.set_position(padH + gridW - badgeSize - Math.round(4 * scale), gridH - badgeSize - Math.round(2 * scale));
+        container.add_child(badge);
+    }
+
+    // ── Tooltip ──────────────────────────────────────────────────────────────
+
+    _showTooltip(container, group) {
+        this._hideTooltip();
+
+        const win = group.windows[0];
+        const title = win?.get_title?.() || group.app.get_name() || '';
+        if (!title) return;
+
+        const tooltip = new St.Label({
+            text: title,
+            style: 'background-color: rgba(20,20,24,0.92); '
+                 + 'color: rgba(255,255,255,0.92); '
+                 + 'font-size: 12px; '
+                 + 'padding: 6px 12px; '
+                 + 'border-radius: 8px; '
+                 + 'box-shadow: 0 2px 8px rgba(0,0,0,0.4); '
+                 + 'border: 1px solid rgba(255,255,255,0.08);',
+        });
+        tooltip.opacity = 0;
+
+        // Position tooltip next to the container
+        const [x, y] = container.get_transformed_position();
+        const tooltipX = x + container.width + 8;
+        const tooltipY = y + container.height / 2 - 14;
+        tooltip.set_position(tooltipX, tooltipY);
+
+        Main.uiGroup.add_child(tooltip);
+        tooltip.ease({ opacity: 255, duration: 150, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+        this._tooltip = tooltip;
+    }
+
+    _hideTooltip() {
+        if (this._tooltip) {
+            const t = this._tooltip;
+            this._tooltip = null;
+            t.ease({ opacity: 0, duration: 100, mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                onComplete: () => t.destroy() });
+        }
+    }
+
     // ── Stack / fan animation ─────────────────────────────────────────────────
 
     _positionStack(grid, animate = true) {
@@ -1569,6 +1674,18 @@ export default class StageArc extends Extension {
                 else win.make_above();
             }},
         ];
+
+        // Multi-window options
+        if (group.windows.length > 1) {
+            items.push({ label: `Close All (${group.windows.length})`, action: () => {
+                group.windows.forEach(w => w.delete(global.get_current_time()));
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => { this._refresh(); return GLib.SOURCE_REMOVE; });
+            }});
+            items.push({ label: 'Minimize All', action: () => {
+                group.windows.forEach(w => w.minimize());
+                this._refresh();
+            }});
+        }
 
         // Add ungroup option if merged
         if (group.appIds.length > 1) {
@@ -1756,7 +1873,7 @@ export default class StageArc extends Extension {
         this._cancelHide();
         this._refresh();
         const geo = this._geo;
-        this._panel.ease({ x: geo.visX, y: geo.visY, duration: 220, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+        this._panel.ease({ x: geo.visX, y: geo.visY, duration: 280, mode: Clutter.AnimationMode.EASE_OUT_BACK });
     }
 
     _hidePanel() {
