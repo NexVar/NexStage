@@ -1,0 +1,15 @@
+{
+  "project_name": "GNOME Stage Manager",
+  "notifications": {
+    "enabled": false
+  },
+  "deploy": {
+    "platform": "none"
+  },
+  "supabase": {
+    "enabled": false
+  },
+  "test_runner": {
+    "command": null
+  }
+}
