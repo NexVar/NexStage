@@ -1827,21 +1827,10 @@ export default class StageArc extends Extension {
                 }
             }
 
-            global.workspace_manager.get_active_workspace().list_windows().forEach(win => {
-                if (!win.skip_taskbar && !group.windows.includes(win) && !win.is_attached_dialog() && !win.minimized)
-                    win.minimize();
-            });
-
+            // Raise group windows without minimizing others
             group.windows.forEach(win => {
                 if (win.minimized) win.unminimize();
-                const app = tracker.get_window_app(win);
-                if (app) {
-                    const state = this._groupStates.get(app.get_id());
-                    if (state?.savedLayout.has(win)) {
-                        const rect = state.savedLayout.get(win);
-                        win.move_resize_frame(true, rect.x, rect.y, rect.width, rect.height);
-                    }
-                }
+                win.raise();
             });
 
             let target = focusWin ?? null;
