@@ -18,6 +18,10 @@ const SCROLL_MIN_VEL  = 0.005;
 const DRAG_THRESHOLD  = 18;
 const GHOST_SIZE      = 100;
 
+// Close button constants
+const CLOSE_BTN_SIZE  = 22;
+const CLOSE_BTN_MARGIN = 6;
+
 const KEYBINDINGS = [
     'keybinding-toggle',
     'keybinding-next',
@@ -766,9 +770,16 @@ export default class StageArc extends Extension {
                 if (container.hover) {
                     this._containers.forEach(c => {
                         const isThis = c === container;
-                        c.ease({ scale_x: isThis ? 1.08 : 0.95, scale_y: isThis ? 1.08 : 0.95,
-                            duration: 180, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+                        c.ease({ scale_x: isThis ? 1.06 : 0.96, scale_y: isThis ? 1.06 : 0.96,
+                            duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
                     });
+                    // Highlight hovered card border
+                    const frontCard = grid._cards[0]?.card;
+                    if (frontCard) {
+                        frontCard.style = frontCard.style.replace(
+                            /border: [^;]+;/, 'border: 1px solid rgba(255,255,255,0.25);'
+                        );
+                    }
                     // Fan stack after 350ms hold
                     const g = container._grid;
                     if (g && !g._fanned && !g._fanTimer) {
@@ -793,6 +804,13 @@ export default class StageArc extends Extension {
                         });
                     }
                 } else {
+                    // Reset card border
+                    const frontCard = grid._cards[0]?.card;
+                    if (frontCard) {
+                        frontCard.style = frontCard.style.replace(
+                            /border: [^;]+;/, 'border: 1px solid rgba(255,255,255,0.08);'
+                        );
+                    }
                     // Cancel pending fan; start grace timer before collapsing
                     const g = container._grid;
                     if (g?._fanTimer) { GLib.source_remove(g._fanTimer); g._fanTimer = null; }
@@ -804,7 +822,7 @@ export default class StageArc extends Extension {
                                 this._positionStack(g);
                                 this._containers.forEach(c => {
                                     c.ease({ x: c._baseX, y: c._baseY, scale_x: 1.0, scale_y: 1.0,
-                                        duration: 240, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+                                        duration: 260, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
                                 });
                             }
                             return GLib.SOURCE_REMOVE;
@@ -814,7 +832,7 @@ export default class StageArc extends Extension {
                     if (!this._containers.some(c => c.hover)) {
                         this._containers.forEach(c => {
                             c.ease({ x: c._baseX, y: c._baseY, scale_x: 1.0, scale_y: 1.0,
-                                duration: 180, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+                                duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
                         });
                     }
                 }
@@ -994,8 +1012,15 @@ export default class StageArc extends Extension {
                     this._containers.forEach(c => {
                         const isThis = c === container;
                         c.ease({ scale_x: isThis ? 1.06 : 0.97, scale_y: isThis ? 1.06 : 0.97,
-                            duration: 160, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+                            duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
                     });
+                    // Highlight hovered card border
+                    const frontCard = grid._cards[0]?.card;
+                    if (frontCard) {
+                        frontCard.style = frontCard.style.replace(
+                            /border: [^;]+;/, 'border: 1px solid rgba(255,255,255,0.25);'
+                        );
+                    }
                     // Fan stack after 350ms hold
                     const g = container._grid;
                     if (g && !g._fanned && !g._fanTimer) {
@@ -1020,6 +1045,13 @@ export default class StageArc extends Extension {
                         });
                     }
                 } else {
+                    // Reset card border
+                    const frontCard = grid._cards[0]?.card;
+                    if (frontCard) {
+                        frontCard.style = frontCard.style.replace(
+                            /border: [^;]+;/, 'border: 1px solid rgba(255,255,255,0.08);'
+                        );
+                    }
                     // Cancel pending fan; start grace timer before collapsing
                     const g = container._grid;
                     if (g?._fanTimer) { GLib.source_remove(g._fanTimer); g._fanTimer = null; }
@@ -1031,7 +1063,7 @@ export default class StageArc extends Extension {
                                 this._positionStack(g);
                                 this._containers.forEach(c => {
                                     c.ease({ x: c._baseX, y: c._baseY, scale_x: 1.0, scale_y: 1.0,
-                                        duration: 240, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+                                        duration: 260, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
                                 });
                             }
                             return GLib.SOURCE_REMOVE;
@@ -1041,7 +1073,7 @@ export default class StageArc extends Extension {
                     if (!this._containers.some(c => c.hover)) {
                         this._containers.forEach(c => {
                             c.ease({ x: c._baseX, y: c._baseY, scale_x: 1.0, scale_y: 1.0,
-                                duration: 160, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+                                duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
                         });
                     }
                 }
@@ -1158,7 +1190,8 @@ export default class StageArc extends Extension {
 
     _buildGrid(group, gridW, gridH, scale) {
         const windows = group.windows.slice(0, 4);
-        const r = Math.round(10 * scale);
+        const r = Math.round(12 * scale);
+        const shadowSize = Math.round(4 * scale);
 
         const grid = new St.Widget({
             reactive: false,
@@ -1169,6 +1202,7 @@ export default class StageArc extends Extension {
         });
         grid._dimCells = [];
         grid._cards    = [];
+        grid._closeBtns = [];
         grid._fanned   = false;
         grid._fanTimer  = null;
         grid._closeTimer = null;
@@ -1186,24 +1220,78 @@ export default class StageArc extends Extension {
             const cH    = Math.round(winH * s);
 
             const card = new St.Widget({
-                reactive: true,
+                reactive: true, track_hover: true,
+                width: cW, height: cH,
+                clip_to_allocation: false,
+                style: `border-radius: ${r}px; `
+                     + `box-shadow: 0 ${shadowSize}px ${shadowSize * 3}px rgba(0,0,0,0.35); `
+                     + `border: 1px solid rgba(255,255,255,0.08);`,
+            });
+            card.set_pivot_point(0.5, 0.5);
+
+            const clone = actor
+                ? new Clutter.Clone({ source: actor, width: cW, height: cH })
+                : new St.Widget({
+                    style: `background-color:#2a2a2a; border-radius:${r}px;`,
+                    width: cW, height: cH,
+                });
+            // Clip clone inside rounded card
+            const cloneWrap = new St.Widget({
                 width: cW, height: cH,
                 clip_to_allocation: true,
                 style: `border-radius: ${r}px;`,
             });
-            card.set_pivot_point(0.5, 0.5);
+            cloneWrap.add_child(clone);
+            card.add_child(cloneWrap);
 
-            if (actor)
-                card.add_child(new Clutter.Clone({ source: actor, width: cW, height: cH }));
-            else
-                card.add_child(new St.Widget({
-                    style: `background-color:#2a2a2a; border-radius:${r}px;`,
-                    width: cW, height: cH,
-                }));
+            // --- Close button (macOS style, hidden by default) ---
+            const btnSize = Math.round(CLOSE_BTN_SIZE * scale);
+            const btnMargin = Math.round(CLOSE_BTN_MARGIN * scale);
+            const closeBtn = new St.Button({
+                width: btnSize, height: btnSize,
+                reactive: true,
+                opacity: 0,
+                style: `border-radius: ${Math.round(btnSize / 2)}px; `
+                     + `background-color: rgba(180,40,40,0.85); `
+                     + `border: 1px solid rgba(255,255,255,0.2); `
+                     + `box-shadow: 0 1px 3px rgba(0,0,0,0.4);`,
+            });
+            closeBtn.set_position(btnMargin, btnMargin);
+            closeBtn.set_pivot_point(0.5, 0.5);
+
+            // X label inside close button
+            const xLabel = new St.Label({
+                text: '\u00D7',
+                style: `color: white; font-size: ${Math.round(14 * scale)}px; font-weight: bold; text-align: center;`,
+            });
+            xLabel.set_pivot_point(0.5, 0.5);
+            closeBtn.set_child(xLabel);
+
+            closeBtn.connect('clicked', () => {
+                win.delete(global.get_current_time());
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => { this._refresh(); return GLib.SOURCE_REMOVE; });
+            });
+            closeBtn.connect('enter-event', () => {
+                closeBtn.ease({ scale_x: 1.15, scale_y: 1.15, duration: 100, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+            });
+            closeBtn.connect('leave-event', () => {
+                closeBtn.ease({ scale_x: 1.0, scale_y: 1.0, duration: 100, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+            });
+            card.add_child(closeBtn);
+            grid._closeBtns.push(closeBtn);
+
+            // Show/hide close button on card hover
+            card.connect('notify::hover', () => {
+                closeBtn.ease({
+                    opacity: card.hover ? 255 : 0,
+                    duration: 150,
+                    mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                });
+            });
 
             const dim = new St.Widget({
                 reactive: false, width: cW, height: cH,
-                style: `background-color: rgba(0,0,0,0.45); border-radius: ${r}px;`,
+                style: `background-color: rgba(0,0,0,0.35); border-radius: ${r}px;`,
                 opacity: 0,
             });
             grid._dimCells.push(dim);
