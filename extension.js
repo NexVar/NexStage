@@ -299,7 +299,10 @@ export default class StageArc extends Extension {
         this._panel = new St.Widget({
             reactive: true,
             clip_to_allocation: true,
-            style: 'background-color: transparent;',
+            style: 'background-color: rgba(20, 20, 22, 0.65); '
+                 + 'border-radius: 16px; '
+                 + 'box-shadow: 0 4px 24px rgba(0,0,0,0.4); '
+                 + 'border: 1px solid rgba(255,255,255,0.06);',
             width: geo.panelW,
             height: geo.panelH,
         });
@@ -719,6 +722,12 @@ export default class StageArc extends Extension {
 
         const geo = this._geo;
 
+        // Check which group is currently focused for highlighting
+        const focusedWin = global.display.get_focus_window();
+        const focusedTracker = Shell.WindowTracker.get_default();
+        const focusedApp = focusedWin ? focusedTracker.get_window_app(focusedWin) : null;
+        const focusedAppId = focusedApp ? focusedApp.get_id() : null;
+
         this._groups.forEach((group, idx) => {
             const relIdx   = idx - this._offset;
             const angleDeg = geo.centerAngle + relIdx * this._angleStep;
@@ -739,7 +748,8 @@ export default class StageArc extends Extension {
             const sI   = Math.round(this._iS * scale);
             const sOvl = Math.round(ICON_OVL * scale);
             const sP   = Math.round(PAD_H * scale);
-            const totH = sH + sI - sOvl;
+            const labelH = Math.round(16 * scale);
+            const totH = sH + sI - sOvl + labelH;
 
             const baseX = Math.round(itemCX - sW / 2 - sP);
             const baseY = Math.round(itemCY - totH / 2);
@@ -757,14 +767,40 @@ export default class StageArc extends Extension {
             container._baseOpacity = alpha;
             container._groupRef    = group;
 
+            // Active group detection
+            const isActive = focusedAppId && group.appIds.includes(focusedAppId);
+
             const grid = this._buildGrid(group, sW, sH, scale);
             grid.set_position(sP, 0);
             container.add_child(grid);
             container._grid = grid;
 
+            // Active group highlight: bright border on front card
+            if (isActive && grid._cards[0]) {
+                const fc = grid._cards[0].card;
+                fc.style = fc.style.replace(
+                    /border: [^;]+;/, `border: 2px solid rgba(100,160,255,0.6);`
+                );
+            }
+
             container._dim = null; // dims are now per-cell inside grid._dimCells
 
             this._buildIconRow(container, group, sW, sI, sOvl, sP, scale, grid);
+
+            // App name label
+            const appName = group.app.get_name() || '';
+            const nameLabel = new St.Label({
+                text: appName,
+                style: `color: rgba(255,255,255,${isActive ? '1.0' : '0.85'}); `
+                     + `font-size: ${Math.round(11 * scale)}px; `
+                     + `font-weight: ${isActive ? '600' : '400'}; `
+                     + `text-align: center;`,
+                x_align: Clutter.ActorAlign.CENTER,
+            });
+            nameLabel.set_width(sW + sP * 2);
+            nameLabel.set_position(0, sH + sI - sOvl + Math.round(2 * scale));
+            nameLabel.clutter_text.set_ellipsize(3); // PANGO_ELLIPSIZE_END
+            container.add_child(nameLabel);
 
             container.connect('notify::hover', () => {
                 if (container.hover) {
@@ -974,18 +1010,28 @@ export default class StageArc extends Extension {
 
         const startY = PAD_V - this._vertOffset * (ITEM_H + SPACING);
 
+        // Check which group is currently focused for highlighting
+        const focusedWin = global.display.get_focus_window();
+        const focusedTracker = Shell.WindowTracker.get_default();
+        const focusedApp = focusedWin ? focusedTracker.get_window_app(focusedWin) : null;
+        const focusedAppId = focusedApp ? focusedApp.get_id() : null;
+
         this._groups.forEach((group, idx) => {
             const sW   = this._gW;
             const sH   = this._gH;
             const sI   = Math.round(this._iS * 0.8);
             const sOvl = ICON_OVL;
             const sP   = PAD_H;
-            const totH = sH + sI - sOvl;
+            const labelH = 16;
+            const totH = sH + sI - sOvl + labelH;
             const posX = 0;
             const posY = Math.round(startY + idx * (ITEM_H + SPACING));
 
             // Skip if completely outside panel
             if (posY + totH < 0 || posY > panelH) return;
+
+            // Active group detection
+            const isActive = focusedAppId && group.appIds.includes(focusedAppId);
 
             const container = new St.Widget({
                 reactive: true, track_hover: true,
@@ -1005,7 +1051,30 @@ export default class StageArc extends Extension {
             container._grid = grid;
             container._dim  = null;
 
+            // Active group highlight: bright border on front card
+            if (isActive && grid._cards[0]) {
+                const fc = grid._cards[0].card;
+                fc.style = fc.style.replace(
+                    /border: [^;]+;/, 'border: 2px solid rgba(100,160,255,0.6);'
+                );
+            }
+
             this._buildIconRow(container, group, sW, sI, sOvl, sP, 1.0, grid);
+
+            // App name label
+            const appName = group.app.get_name() || '';
+            const nameLabel = new St.Label({
+                text: appName,
+                style: `color: rgba(255,255,255,${isActive ? '1.0' : '0.75'}); `
+                     + `font-size: 11px; `
+                     + `font-weight: ${isActive ? '600' : '400'}; `
+                     + `text-align: center;`,
+                x_align: Clutter.ActorAlign.CENTER,
+            });
+            nameLabel.set_width(sW + sP * 2);
+            nameLabel.set_position(0, sH + sI - sOvl + 2);
+            nameLabel.clutter_text.set_ellipsize(3);
+            container.add_child(nameLabel);
 
             container.connect('notify::hover', () => {
                 if (container.hover) {
