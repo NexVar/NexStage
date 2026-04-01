@@ -84,6 +84,20 @@ export default class StageArc extends Extension {
             this._redraw();
         });
 
+        // Live refresh when windows are created, added, or removed
+        this._winCreatedSig = global.display.connect('window-created', () => {
+            this._refresh();
+        });
+        this._restackedSig = global.display.connect('restacked', () => {
+            this._refresh();
+        });
+        this._connectWorkspaceSignals();
+        this._wsSwitchSig = global.workspace_manager.connect('active-workspace-changed', () => {
+            this._disconnectWorkspaceSignals();
+            this._connectWorkspaceSignals();
+            this._refresh();
+        });
+
         this._overviewShowSig = Main.overview.connect('showing', () => {
             this._cancelDrag();
             if (this._isVisible) this._hidePanel();
@@ -127,6 +141,10 @@ export default class StageArc extends Extension {
         if (this._monitorSig)       { Main.layoutManager.disconnect(this._monitorSig);  this._monitorSig      = null; }
         if (this._settingsSig) { this._settings.disconnect(this._settingsSig); this._settingsSig = null; }
         if (this._focusSig)    { global.display.disconnect(this._focusSig);    this._focusSig = null; }
+        if (this._winCreatedSig) { global.display.disconnect(this._winCreatedSig); this._winCreatedSig = null; }
+        if (this._restackedSig) { global.display.disconnect(this._restackedSig); this._restackedSig = null; }
+        if (this._wsSwitchSig) { global.workspace_manager.disconnect(this._wsSwitchSig); this._wsSwitchSig = null; }
+        this._disconnectWorkspaceSignals();
         if (this._pollId)      { GLib.source_remove(this._pollId);    this._pollId = null; }
         if (this._persistId)   { GLib.source_remove(this._persistId); this._persistId = null; }
         if (this._refreshTo)   { GLib.source_remove(this._refreshTo); this._refreshTo = null; }
@@ -137,6 +155,24 @@ export default class StageArc extends Extension {
         if (this._panel) { this._panel.destroy(); this._panel = null; }
 
         this._settings = null;
+    }
+
+    // ── Workspace window signals ─────────────────────────────────────────────
+
+    _connectWorkspaceSignals() {
+        const ws = global.workspace_manager.get_active_workspace();
+        if (!ws) return;
+        this._wsWinAddedSig = ws.connect('window-added', () => this._refresh());
+        this._wsWinRemovedSig = ws.connect('window-removed', () => this._refresh());
+        this._activeWs = ws;
+    }
+
+    _disconnectWorkspaceSignals() {
+        if (this._activeWs) {
+            if (this._wsWinAddedSig) { this._activeWs.disconnect(this._wsWinAddedSig); this._wsWinAddedSig = null; }
+            if (this._wsWinRemovedSig) { this._activeWs.disconnect(this._wsWinRemovedSig); this._wsWinRemovedSig = null; }
+            this._activeWs = null;
+        }
     }
 
     // ── Merge persistence ─────────────────────────────────────────────────────
