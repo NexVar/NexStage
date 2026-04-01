@@ -98,6 +98,59 @@
       <description>Position of close button on cards: left or right</description>
     </key>
 
+    <key name="max-recent-groups" type="i">
+      <default>6</default>
+      <range min="3" max="12"/>
+      <summary>Max Recent Groups</summary>
+      <description>Maximum number of app groups shown in sidebar</description>
+    </key>
+
+    <key name="inactive-tilt" type="i">
+      <default>6</default>
+      <range min="0" max="15"/>
+      <summary>Inactive Card Tilt</summary>
+      <description>Y-axis rotation in degrees for inactive cards (0 = flat)</description>
+    </key>
+
+    <key name="inactive-scale" type="i">
+      <default>93</default>
+      <range min="70" max="100"/>
+      <summary>Inactive Card Scale</summary>
+      <description>Scale percentage for inactive cards (100 = same as active)</description>
+    </key>
+
+    <key name="activate-mode" type="s">
+      <default>'raise'</default>
+      <summary>Activate Mode</summary>
+      <description>raise = bring to front only, focus = bring to front and minimize others</description>
+    </key>
+
+    <key name="animation-speed" type="i">
+      <default>100</default>
+      <range min="50" max="200"/>
+      <summary>Animation Speed</summary>
+      <description>Animation duration percentage (50 = fast, 100 = normal, 200 = slow)</description>
+    </key>
+
+    <key name="show-window-count" type="b">
+      <default>true</default>
+      <summary>Show Window Count</summary>
+      <description>Show badge with window count on multi-window groups</description>
+    </key>
+
+    <key name="show-tooltip" type="b">
+      <default>true</default>
+      <summary>Show Tooltip</summary>
+      <description>Show window title tooltip on hover</description>
+    </key>
+
+    <key name="panel-margin" type="i">
+      <default>8</default>
+      <range min="0" max="24"/>
+      <summary>Panel Margin</summary>
+      <description>Margin in pixels from the screen edge</description>
+    </key>
+
     <key name="keybinding-toggle" type="as">
       <default><![CDATA[['']]]></default>
       <summary>Toggle Panel</summary>
