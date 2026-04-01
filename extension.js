@@ -1873,14 +1873,28 @@ export default class StageArc extends Extension {
         const px2 = geo.visX + geo.panelW;
         const py2 = geo.visY + geo.panelH;
 
-        // clear = no unminimized window overlaps the panel's visible area
-        const clear = !ws.list_windows().some(win => {
+        const mon = this._monitor;
+
+        // Check if any visible window on THIS monitor overlaps the panel area
+        const overlapsPanel = ws.list_windows().some(win => {
             if (win.minimized || win.skip_taskbar || win.is_attached_dialog()) return false;
             const r = win.get_frame_rect();
-            // AABB overlap test
             return r.x < px2 && r.x + r.width  > px1 &&
                    r.y < py2 && r.y + r.height > py1;
         });
+
+        // Also check: are there ANY visible windows on this monitor at all?
+        const hasWindowsOnMonitor = ws.list_windows().some(win => {
+            if (win.minimized || win.skip_taskbar || win.is_attached_dialog()) return false;
+            const r = win.get_frame_rect();
+            const cx = r.x + r.width / 2;
+            const cy = r.y + r.height / 2;
+            return cx >= mon.x && cx < mon.x + mon.width &&
+                   cy >= mon.y && cy < mon.y + mon.height;
+        });
+
+        // Show panel if: no windows overlap panel OR no windows on this monitor at all
+        const clear = !overlapsPanel || !hasWindowsOnMonitor;
 
         if (clear && !this._persistMode) {
             this._persistMode = true;
