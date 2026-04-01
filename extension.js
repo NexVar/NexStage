@@ -754,8 +754,10 @@ export default class StageArc extends Extension {
             const itemCY = geo.arcCY + arcR * Math.sin(angleRad);
 
             const dist  = Math.abs(relIdx);
-            const scale = Math.pow(0.78, dist);
-            const alpha = 255;
+            // Smoother depth curve: center item is full size, distant items shrink more gradually
+            const scale = 1.0 / (1.0 + dist * 0.28);
+            // Depth-based opacity: distant items fade slightly
+            const alpha = Math.round(255 * Math.max(0.5, 1.0 - dist * 0.12));
 
             const sW   = Math.round(this._gW * scale);
             const sH   = Math.round(this._gH * scale);
@@ -1037,7 +1039,8 @@ export default class StageArc extends Extension {
         this._windowMap.clear();
         if (this._groups.length === 0) return;
 
-        const ITEM_H  = this._gH + Math.round(this._iS * 0.5);
+        const labelExtra = this._showAppLabel ? 16 : 0;
+        const ITEM_H  = this._gH + Math.round(this._iS * 0.5) + labelExtra;
         const SPACING = this._vertSpacing;
         const PAD_V   = 32;
         const N       = this._groups.length;
@@ -1748,45 +1751,70 @@ export default class StageArc extends Extension {
     _activateGroup(group, focusWin = null) {
         const tracker = Shell.WindowTracker.get_default();
 
-        const focused = global.display.get_focus_window();
-        if (focused) {
-            const app = tracker.get_window_app(focused);
-            if (app) {
-                const fid = app.get_id();
-                if (!this._groupStates.has(fid))
-                    this._groupStates.set(fid, { savedLayout: new Map(), lastFocused: focused });
-                const state = this._groupStates.get(fid);
-                state.savedLayout.clear();
-                global.workspace_manager.get_active_workspace().list_windows().forEach(win => {
-                    const wa = tracker.get_window_app(win);
-                    if (wa && wa.get_id() === fid)
-                        state.savedLayout.set(win, win.get_frame_rect());
+        // Visual transition: clicked container scales up, others shrink away
+        this._containers.forEach(c => {
+            const isTarget = c._groupRef === group;
+            if (isTarget) {
+                c.ease({
+                    scale_x: 1.12, scale_y: 1.12,
+                    opacity: 255,
+                    rotation_angle_z: 0,
+                    duration: 180,
+                    mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                });
+            } else {
+                c.ease({
+                    scale_x: 0.75, scale_y: 0.75,
+                    opacity: 80,
+                    duration: 180,
+                    mode: Clutter.AnimationMode.EASE_IN_QUAD,
                 });
             }
-        }
-
-        global.workspace_manager.get_active_workspace().list_windows().forEach(win => {
-            if (!win.skip_taskbar && !group.windows.includes(win) && !win.is_attached_dialog() && !win.minimized)
-                win.minimize();
         });
 
-        group.windows.forEach(win => {
-            if (win.minimized) win.unminimize();
-            const app = tracker.get_window_app(win);
-            if (app) {
-                const state = this._groupStates.get(app.get_id());
-                if (state?.savedLayout.has(win)) {
-                    const rect = state.savedLayout.get(win);
-                    win.move_resize_frame(true, rect.x, rect.y, rect.width, rect.height);
+        // Delay actual switch to let animation play
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 150, () => {
+            const focused = global.display.get_focus_window();
+            if (focused) {
+                const app = tracker.get_window_app(focused);
+                if (app) {
+                    const fid = app.get_id();
+                    if (!this._groupStates.has(fid))
+                        this._groupStates.set(fid, { savedLayout: new Map(), lastFocused: focused });
+                    const state = this._groupStates.get(fid);
+                    state.savedLayout.clear();
+                    global.workspace_manager.get_active_workspace().list_windows().forEach(win => {
+                        const wa = tracker.get_window_app(win);
+                        if (wa && wa.get_id() === fid)
+                            state.savedLayout.set(win, win.get_frame_rect());
+                    });
                 }
             }
+
+            global.workspace_manager.get_active_workspace().list_windows().forEach(win => {
+                if (!win.skip_taskbar && !group.windows.includes(win) && !win.is_attached_dialog() && !win.minimized)
+                    win.minimize();
+            });
+
+            group.windows.forEach(win => {
+                if (win.minimized) win.unminimize();
+                const app = tracker.get_window_app(win);
+                if (app) {
+                    const state = this._groupStates.get(app.get_id());
+                    if (state?.savedLayout.has(win)) {
+                        const rect = state.savedLayout.get(win);
+                        win.move_resize_frame(true, rect.x, rect.y, rect.width, rect.height);
+                    }
+                }
+            });
+
+            let target = focusWin ?? null;
+            if (!target) group.appIds.forEach(id => { if (!target) target = this._groupStates.get(id)?.lastFocused; });
+            (target ?? group.windows[0])?.activate(global.get_current_time());
+
+            this._hidePanel();
+            return GLib.SOURCE_REMOVE;
         });
-
-        let target = focusWin ?? null;
-        if (!target) group.appIds.forEach(id => { if (!target) target = this._groupStates.get(id)?.lastFocused; });
-        (target ?? group.windows[0])?.activate(global.get_current_time());
-
-        this._hidePanel();
     }
 
     // ── Focus tracking ────────────────────────────────────────────────────────
@@ -1873,15 +1901,74 @@ export default class StageArc extends Extension {
         this._cancelHide();
         this._refresh();
         const geo = this._geo;
-        this._panel.ease({ x: geo.visX, y: geo.visY, duration: 280, mode: Clutter.AnimationMode.EASE_OUT_BACK });
+
+        // Panel slides in
+        this._panel.ease({ x: geo.visX, y: geo.visY, duration: 300, mode: Clutter.AnimationMode.EASE_OUT_BACK });
+
+        // Cascade entrance: each container slides in with staggered delay
+        this._containers.forEach((c, i) => {
+            const origX = c._baseX;
+            const origY = c._baseY;
+            const isBottom = this._pos === 'bottom';
+
+            // Start offset: items come from outside the panel
+            if (isBottom) {
+                c.set_position(origX, origY + 60);
+            } else if (this._pos === 'right') {
+                c.set_position(origX + 60, origY);
+            } else {
+                c.set_position(origX - 60, origY);
+            }
+            c.opacity = 0;
+            c.set_scale(0.7, 0.7);
+
+            // Staggered entrance with spring-like bounce
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 40 + i * 50, () => {
+                c.ease({
+                    x: origX, y: origY,
+                    opacity: 255,
+                    scale_x: c._isActive ? 1.0 : 0.92,
+                    scale_y: c._isActive ? 1.0 : 0.92,
+                    rotation_angle_z: c._isActive ? 0 : -2.0,
+                    duration: 350,
+                    mode: Clutter.AnimationMode.EASE_OUT_BACK,
+                });
+                return GLib.SOURCE_REMOVE;
+            });
+        });
     }
 
     _hidePanel() {
         if (!this._isVisible) return;
         this._isVisible = false;
         this._cancelHide();
+        this._hideTooltip();
         const geo = this._geo;
-        this._panel.ease({ x: geo.hidX, y: geo.hidY, duration: 220, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+
+        // Cascade exit: containers slide out with stagger (reverse order)
+        const total = this._containers.length;
+        this._containers.forEach((c, i) => {
+            const isBottom = this._pos === 'bottom';
+            const exitX = isBottom ? c._baseX : (this._pos === 'right' ? c._baseX + 40 : c._baseX - 40);
+            const exitY = isBottom ? c._baseY + 40 : c._baseY;
+
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, (total - 1 - i) * 25, () => {
+                c.ease({
+                    x: exitX, y: exitY,
+                    opacity: 0,
+                    scale_x: 0.8, scale_y: 0.8,
+                    duration: 200,
+                    mode: Clutter.AnimationMode.EASE_IN_QUAD,
+                });
+                return GLib.SOURCE_REMOVE;
+            });
+        });
+
+        // Panel slides out after containers
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, Math.max(80, total * 25), () => {
+            this._panel.ease({ x: geo.hidX, y: geo.hidY, duration: 200, mode: Clutter.AnimationMode.EASE_IN_QUAD });
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     _startHide() {
