@@ -410,9 +410,7 @@ export default class StageArc extends Extension {
         this._edge.set_position(geo.edgeX, geo.edgeY);
         Main.layoutManager.addChrome(this._edge);
 
-        // Strut: invisible panel that reserves workarea so windows don't overlap sidebar
-        this._strut = null;
-        this._updateStrut();
+        this._setupReserveSpace();
 
         this._edge.connect('enter-event',  () => { if (!this._isVisible) this._showPanel(); });
         this._panel.connect('enter-event', () => { if (!this._dragging) this._cancelHide(); });
@@ -431,35 +429,75 @@ export default class StageArc extends Extension {
         });
     }
 
-    _updateStrut() {
-        this._removeStrut();
+    _setupReserveSpace() {
+        this._teardownReserveSpace();
         if (!this._reserveSpace) return;
+
+        // Watch for maximize/unmaximize events to adjust window geometry
+        this._reserveSigs = [];
+        const sid1 = global.display.connect('window-created', (_d, win) => {
+            this._adjustWindowForReserve(win);
+            const sid = win.connect('notify::maximized-horizontally', () => this._adjustWindowForReserve(win));
+            this._reserveSigs.push({ obj: win, id: sid });
+        });
+        this._reserveSigs.push({ obj: global.display, id: sid1 });
+
+        // Adjust already-existing maximized windows
+        const ws = global.workspace_manager.get_active_workspace();
+        ws?.list_windows().forEach(win => this._adjustWindowForReserve(win));
+    }
+
+    _adjustWindowForReserve(win) {
+        if (!this._reserveSpace) return;
+        if (!win || win.skip_taskbar || win.is_attached_dialog()) return;
+        // Only adjust if fully maximized (not fullscreen — fullscreen should cover everything)
+        if (win.get_maximized() !== Meta.MaximizeFlags.BOTH) return;
+        if (win.is_fullscreen()) return;
 
         const geo = this._geo;
         const mon = this._monitor;
+        const PS = geo.panelW;
 
-        // Create an invisible widget that reserves workarea space
-        let x, y, w, h;
+        // Get the current workarea (respects top bar, dock, etc.)
+        const monIdx = Main.layoutManager.monitors.indexOf(mon);
+        const wa = Main.layoutManager.getWorkAreaForMonitor(monIdx >= 0 ? monIdx : 0);
+
+        let x = wa.x, y = wa.y, w = wa.width, h = wa.height;
         if (this._pos === 'left') {
-            x = mon.x; y = mon.y; w = geo.panelW; h = mon.height;
+            x = wa.x + PS;
+            w = wa.width - PS;
         } else if (this._pos === 'right') {
-            x = mon.x + mon.width - geo.panelW; y = mon.y; w = geo.panelW; h = mon.height;
-        } else { // bottom
-            x = mon.x; y = mon.y + mon.height - geo.panelH; w = mon.width; h = geo.panelH;
+            w = wa.width - PS;
+        } else {
+            h = wa.height - geo.panelH;
         }
 
-        this._strut = new St.Widget({ width: w, height: h, opacity: 0, reactive: false });
-        this._strut.set_position(x, y);
-        Main.layoutManager.addChrome(this._strut, { affectsStruts: true, trackFullscreen: false });
+        // Only adjust if window is on the panel's monitor
+        const fr = win.get_frame_rect();
+        const cx = fr.x + fr.width / 2;
+        const cy = fr.y + fr.height / 2;
+        if (cx < mon.x || cx >= mon.x + mon.width || cy < mon.y || cy >= mon.y + mon.height)
+            return;
+
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+            if (win.get_maximized() === Meta.MaximizeFlags.BOTH && !win.is_fullscreen())
+                win.move_resize_frame(false, x, y, w, h);
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
-    _removeStrut() {
-        if (this._strut) { this._strut.destroy(); this._strut = null; }
+    _teardownReserveSpace() {
+        if (this._reserveSigs) {
+            this._reserveSigs.forEach(({ obj, id }) => {
+                try { obj.disconnect(id); } catch (_) {}
+            });
+            this._reserveSigs = null;
+        }
     }
 
     _destroyUI() {
         this._cancelHide();
-        this._removeStrut();
+        this._teardownReserveSpace();
         if (this._edge)  { this._edge.destroy();  this._edge = null; }
         if (this._panel) { this._panel.destroy(); this._panel = null; }
     }
