@@ -433,34 +433,56 @@ export default class StageArc extends Extension {
         this._teardownReserveSpace();
         if (!this._reserveSpace) return;
 
-        // Watch for maximize/unmaximize events to adjust window geometry
         this._reserveSigs = [];
-        const sid1 = global.display.connect('window-created', (_d, win) => {
-            this._adjustWindowForReserve(win);
-            const sid = win.connect('notify::maximized-horizontally', () => this._adjustWindowForReserve(win));
+
+        // Watch maximize events on all windows
+        const connectWin = (win) => {
+            if (!win || win.skip_taskbar) return;
+            const sid = win.connect('notify::maximized-horizontally', () => {
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 80, () => {
+                    this._adjustWindowForReserve(win);
+                    return GLib.SOURCE_REMOVE;
+                });
+            });
             this._reserveSigs.push({ obj: win, id: sid });
+        };
+
+        // Connect to existing windows
+        const ws = global.workspace_manager.get_active_workspace();
+        ws?.list_windows().forEach(win => {
+            connectWin(win);
+            this._adjustWindowForReserve(win);
+        });
+
+        // Connect to new windows
+        const sid1 = global.display.connect('window-created', (_d, win) => {
+            connectWin(win);
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+                this._adjustWindowForReserve(win);
+                return GLib.SOURCE_REMOVE;
+            });
         });
         this._reserveSigs.push({ obj: global.display, id: sid1 });
-
-        // Adjust already-existing maximized windows
-        const ws = global.workspace_manager.get_active_workspace();
-        ws?.list_windows().forEach(win => this._adjustWindowForReserve(win));
     }
 
     _adjustWindowForReserve(win) {
         if (!this._reserveSpace) return;
         if (!win || win.skip_taskbar || win.is_attached_dialog()) return;
-        // Only adjust if fully maximized (not fullscreen — fullscreen should cover everything)
-        if (win.get_maximized() !== Meta.MaximizeFlags.BOTH) return;
         if (win.is_fullscreen()) return;
+        if (win.get_maximized() !== Meta.MaximizeFlags.BOTH) return;
 
-        const geo = this._geo;
         const mon = this._monitor;
-        const PS = geo.panelW;
+        const PS = this._panelSize;
 
-        // Get the current workarea (respects top bar, dock, etc.)
         const monIdx = Main.layoutManager.monitors.indexOf(mon);
         const wa = Main.layoutManager.getWorkAreaForMonitor(monIdx >= 0 ? monIdx : 0);
+
+        // Check if window is on this monitor
+        const fr = win.get_frame_rect();
+        const cx = fr.x + fr.width / 2;
+        const cy = fr.y + fr.height / 2;
+        if (cx < mon.x || cx >= mon.x + mon.width || cy < mon.y || cy >= mon.y + mon.height)
+            return;
 
         let x = wa.x, y = wa.y, w = wa.width, h = wa.height;
         if (this._pos === 'left') {
@@ -469,19 +491,13 @@ export default class StageArc extends Extension {
         } else if (this._pos === 'right') {
             w = wa.width - PS;
         } else {
-            h = wa.height - geo.panelH;
+            h = wa.height - this._panelSize;
         }
 
-        // Only adjust if window is on the panel's monitor
-        const fr = win.get_frame_rect();
-        const cx = fr.x + fr.width / 2;
-        const cy = fr.y + fr.height / 2;
-        if (cx < mon.x || cx >= mon.x + mon.width || cy < mon.y || cy >= mon.y + mon.height)
-            return;
-
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
-            if (win.get_maximized() === Meta.MaximizeFlags.BOTH && !win.is_fullscreen())
-                win.move_resize_frame(false, x, y, w, h);
+        // Unmaximize, resize, so GNOME doesn't fight us
+        win.unmaximize(Meta.MaximizeFlags.BOTH);
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 30, () => {
+            win.move_resize_frame(false, x, y, w, h);
             return GLib.SOURCE_REMOVE;
         });
     }
@@ -1922,11 +1938,15 @@ export default class StageArc extends Extension {
                 item.style = 'padding: 8px 16px; border-radius: 0; text-align: left;';
             });
             item.connect('clicked', () => {
-                action();
+                // Close menu first, then run action
                 if (this._contextMenu) {
                     this._contextMenu.destroy();
                     this._contextMenu = null;
                 }
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 30, () => {
+                    action();
+                    return GLib.SOURCE_REMOVE;
+                });
             });
             menu.add_child(item);
         });
