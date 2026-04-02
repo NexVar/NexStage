@@ -712,6 +712,11 @@ export default class StageArc extends Extension {
     // ── Data ──────────────────────────────────────────────────────────────────
 
     _refresh() {
+        // Always clean up tooltip and context menu on refresh
+        this._hideTooltip();
+        if (this._tooltipTimer) { GLib.source_remove(this._tooltipTimer); this._tooltipTimer = null; }
+        if (this._contextMenu) { this._contextMenu.destroy(); this._contextMenu = null; }
+
         if (this._refreshTo) GLib.source_remove(this._refreshTo);
         this._refreshTo = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
             this._refreshTo = null;
@@ -866,7 +871,7 @@ export default class StageArc extends Extension {
 
             // Inactive tilt for arc layout
             if (!isActive) {
-                container.set_rotation_angle(Clutter.RotateAxis.Z_AXIS, -this._inactiveTilt * 0.4);
+                container.set_rotation_angle(Clutter.RotateAxis.Z_AXIS, -this._inactiveTilt * 0.55);
                 container.set_scale(this._inactiveScale, this._inactiveScale);
             }
 
@@ -919,9 +924,9 @@ export default class StageArc extends Extension {
                     this._containers.forEach(c => {
                         const isThis = c === container;
                         c.ease({
-                            scale_x: isThis ? 1.0 : 0.88,
-                            scale_y: isThis ? 1.0 : 0.88,
-                            rotation_angle_z: isThis ? 0 : (c._isActive ? 0 : -this._inactiveTilt * 0.4),
+                            scale_x: isThis ? 1.05 : 0.90,
+                            scale_y: isThis ? 1.05 : 0.90,
+                            rotation_angle_z: isThis ? 0 : (c._isActive ? 0 : -this._inactiveTilt * 0.55),
                             duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                         });
                     });
@@ -957,7 +962,7 @@ export default class StageArc extends Extension {
                                     c.ease({
                                         x: c._baseX + (after && isBottom  ? shift : 0),
                                         y: c._baseY + (after && !isBottom ? shift : 0),
-                                        scale_x: 0.88, scale_y: 0.88,
+                                        scale_x: 0.90, scale_y: 0.90,
                                         duration: 280, mode: Clutter.AnimationMode.EASE_OUT_BACK,
                                     });
                                 });
@@ -993,7 +998,7 @@ export default class StageArc extends Extension {
                                         x: c._baseX, y: c._baseY,
                                         scale_x: c._isActive ? 1.0 : 0.92,
                                         scale_y: c._isActive ? 1.0 : 0.92,
-                                        rotation_angle_z: c._isActive ? 0 : -this._inactiveTilt * 0.4,
+                                        rotation_angle_z: c._isActive ? 0 : -this._inactiveTilt * 0.55,
                                         duration: 260, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                                     });
                                 });
@@ -1008,7 +1013,7 @@ export default class StageArc extends Extension {
                                 x: c._baseX, y: c._baseY,
                                 scale_x: c._isActive ? 1.0 : 0.92,
                                 scale_y: c._isActive ? 1.0 : 0.92,
-                                rotation_angle_z: c._isActive ? 0 : -this._inactiveTilt * 0.4,
+                                rotation_angle_z: c._isActive ? 0 : -this._inactiveTilt * 0.55,
                                 duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                             });
                         });
@@ -1190,7 +1195,7 @@ export default class StageArc extends Extension {
 
             // Inactive tilt: macOS-style perspective tilt (Y-axis = inward lean)
             if (!isActive) {
-                container.set_rotation_angle(Clutter.RotateAxis.Z_AXIS, -this._inactiveTilt * 0.4);
+                container.set_rotation_angle(Clutter.RotateAxis.Z_AXIS, -this._inactiveTilt * 0.55);
                 container.set_scale(this._inactiveScale, this._inactiveScale);
             }
 
@@ -1241,9 +1246,9 @@ export default class StageArc extends Extension {
                     this._containers.forEach(c => {
                         const isThis = c === container;
                         c.ease({
-                            scale_x: isThis ? 1.0 : 0.88,
-                            scale_y: isThis ? 1.0 : 0.88,
-                            rotation_angle_z: isThis ? 0 : (c._isActive ? 0 : -this._inactiveTilt * 0.4),
+                            scale_x: isThis ? 1.05 : 0.90,
+                            scale_y: isThis ? 1.05 : 0.90,
+                            rotation_angle_z: isThis ? 0 : (c._isActive ? 0 : -this._inactiveTilt * 0.55),
                             duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                         });
                     });
@@ -1279,7 +1284,7 @@ export default class StageArc extends Extension {
                                     c.ease({
                                         x: c._baseX + (after && isBottom  ? shift : 0),
                                         y: c._baseY + (after && !isBottom ? shift : 0),
-                                        scale_x: 0.88, scale_y: 0.88,
+                                        scale_x: 0.90, scale_y: 0.90,
                                         duration: 280, mode: Clutter.AnimationMode.EASE_OUT_BACK,
                                     });
                                 });
@@ -1316,7 +1321,7 @@ export default class StageArc extends Extension {
                                         x: c._baseX, y: c._baseY,
                                         scale_x: c._isActive ? 1.0 : 0.92,
                                         scale_y: c._isActive ? 1.0 : 0.92,
-                                        rotation_angle_z: c._isActive ? 0 : -this._inactiveTilt * 0.4,
+                                        rotation_angle_z: c._isActive ? 0 : -this._inactiveTilt * 0.55,
                                         duration: 260, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                                     });
                                 });
@@ -1332,7 +1337,7 @@ export default class StageArc extends Extension {
                                 x: c._baseX, y: c._baseY,
                                 scale_x: c._isActive ? 1.0 : 0.92,
                                 scale_y: c._isActive ? 1.0 : 0.92,
-                                rotation_angle_z: c._isActive ? 0 : -this._inactiveTilt * 0.4,
+                                rotation_angle_z: c._isActive ? 0 : -this._inactiveTilt * 0.55,
                                 duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                             });
                         });
@@ -1839,22 +1844,23 @@ export default class StageArc extends Extension {
     _activateGroup(group, focusWin = null) {
         const tracker = Shell.WindowTracker.get_default();
 
-        // Visual transition: clicked container scales up, others shrink away
+        // Visual transition: clicked container pops, others shrink and fade
+        this._hideTooltip();
         this._containers.forEach(c => {
             const isTarget = c._groupRef === group;
             if (isTarget) {
                 c.ease({
-                    scale_x: 1.12, scale_y: 1.12,
+                    scale_x: 1.15, scale_y: 1.15,
                     opacity: 255,
                     rotation_angle_z: 0,
-                    duration: 180,
-                    mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                    duration: 220,
+                    mode: Clutter.AnimationMode.EASE_OUT_BACK,
                 });
             } else {
                 c.ease({
-                    scale_x: 0.75, scale_y: 0.75,
-                    opacity: 80,
-                    duration: 180,
+                    scale_x: 0.7, scale_y: 0.7,
+                    opacity: 40,
+                    duration: 200,
                     mode: Clutter.AnimationMode.EASE_IN_QUAD,
                 });
             }
@@ -2013,16 +2019,16 @@ export default class StageArc extends Extension {
             const origY = c._baseY;
             const isBottom = this._pos === 'bottom';
 
-            // Start offset: items come from outside the panel
+            // Start offset: items slide in from outside with more travel distance
             if (isBottom) {
-                c.set_position(origX, origY + 60);
+                c.set_position(origX, origY + 80);
             } else if (this._pos === 'right') {
-                c.set_position(origX + 60, origY);
+                c.set_position(origX + 80, origY);
             } else {
-                c.set_position(origX - 60, origY);
+                c.set_position(origX - 80, origY);
             }
             c.opacity = 0;
-            c.set_scale(0.7, 0.7);
+            c.set_scale(0.6, 0.6);
 
             // Staggered entrance with spring-like bounce
             GLib.timeout_add(GLib.PRIORITY_DEFAULT, Math.round((40 + i * 50) * this._animSpeed), () => {
@@ -2031,7 +2037,7 @@ export default class StageArc extends Extension {
                     opacity: 255,
                     scale_x: c._isActive ? 1.0 : this._inactiveScale,
                     scale_y: c._isActive ? 1.0 : this._inactiveScale,
-                    rotation_angle_z: c._isActive ? 0 : -this._inactiveTilt * 0.4,
+                    rotation_angle_z: c._isActive ? 0 : -this._inactiveTilt * 0.55,
                     duration: Math.round(350 * this._animSpeed),
                     mode: Clutter.AnimationMode.EASE_OUT_BACK,
                 });
@@ -2051,8 +2057,8 @@ export default class StageArc extends Extension {
         const total = this._containers.length;
         this._containers.forEach((c, i) => {
             const isBottom = this._pos === 'bottom';
-            const exitX = isBottom ? c._baseX : (this._pos === 'right' ? c._baseX + 40 : c._baseX - 40);
-            const exitY = isBottom ? c._baseY + 40 : c._baseY;
+            const exitX = isBottom ? c._baseX : (this._pos === 'right' ? c._baseX + 60 : c._baseX - 60);
+            const exitY = isBottom ? c._baseY + 60 : c._baseY;
 
             GLib.timeout_add(GLib.PRIORITY_DEFAULT, (total - 1 - i) * 25, () => {
                 c.ease({
