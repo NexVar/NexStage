@@ -473,7 +473,10 @@ export default class StageArc extends Extension {
         if (this._adjustingReserve) return; // prevent re-entry
         if (!win || win.skip_taskbar || win.is_attached_dialog()) return;
         if (win.is_fullscreen()) return;
-        if (win.get_maximized() !== Meta.MaximizeFlags.BOTH) return;
+        // GNOME 49+: get_maximized() removed, use properties instead
+        const isMaximized = (win.maximized_horizontally && win.maximized_vertically)
+            || (win.get_maximized?.() === Meta.MaximizeFlags.BOTH);
+        if (!isMaximized) return;
 
         const mon = this._monitor;
         const PS = this._panelSize;
@@ -500,7 +503,12 @@ export default class StageArc extends Extension {
 
         // Unmaximize, resize — guard flag prevents signal loop
         this._adjustingReserve = true;
-        win.unmaximize(Meta.MaximizeFlags.BOTH);
+        try {
+            win.unmaximize?.(Meta.MaximizeFlags.BOTH);
+        } catch (_) {
+            // GNOME 49+: unmaximize may need different call
+            try { win.unmaximize?.(3); } catch (_e) {}
+        }
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
             win.move_resize_frame(false, x, y, w, h);
             this._adjustingReserve = false;
