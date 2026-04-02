@@ -87,6 +87,10 @@ export default class StageArc extends Extension {
         // Live refresh when windows are created, added, or removed
         this._winCreatedSig = global.display.connect('window-created', () => {
             this._refresh();
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
+                this._checkPersistence();
+                return GLib.SOURCE_REMOVE;
+            });
         });
         this._restackedSig = global.display.connect('restacked', () => {
             this._refresh();
@@ -140,6 +144,12 @@ export default class StageArc extends Extension {
         });
 
         this._refresh();
+
+        // Initial persistence check after a short delay (GNOME needs time to settle)
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 800, () => {
+            this._checkPersistence();
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     disable() {
