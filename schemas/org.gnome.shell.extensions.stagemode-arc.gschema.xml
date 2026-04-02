@@ -56,6 +56,12 @@
       <description>Spacing in pixels between thumbnails in vertical layout mode</description>
     </key>
 
+    <key name="reserve-screen-space" type="b">
+      <default>false</default>
+      <summary>Reserve Screen Space</summary>
+      <description>When enabled, maximized windows will not overlap the Stage Manager sidebar (macOS-style). Works best with persistent mode.</description>
+    </key>
+
     <key name="multi-monitor-mode" type="s">
       <default>'single'</default>
       <summary>Multi-Monitor Mode</summary>

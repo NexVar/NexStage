@@ -164,17 +164,33 @@ export default class StageArc extends Extension {
         if (!ws) return;
         this._wsWinAddedSig = ws.connect('window-added', () => this._refresh());
         this._wsWinRemovedSig = ws.connect('window-removed', (_ws, removedWin) => {
-            // Animate the removed window's container shrinking away
+            // Animate the removed window's container shrinking and sliding out
             const container = this._containers.find(c => {
                 return c._groupRef?.windows?.includes(removedWin);
             });
             if (container && this._isVisible) {
+                const slideX = this._pos === 'right' ? container._baseX + 30 : container._baseX - 30;
                 container.ease({
-                    scale_x: 0.3, scale_y: 0.3,
+                    x: slideX,
+                    scale_x: 0.4, scale_y: 0.4,
                     opacity: 0,
-                    duration: 250,
+                    duration: 280,
                     mode: Clutter.AnimationMode.EASE_IN_BACK,
-                    onComplete: () => this._refresh(),
+                });
+                // Remaining containers slide into the gap
+                const idx = this._containers.indexOf(container);
+                this._containers.forEach((c, i) => {
+                    if (i > idx && c !== container) {
+                        c.ease({
+                            y: c._baseY - (c.height * 0.3),
+                            duration: 300,
+                            mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
+                        });
+                    }
+                });
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
+                    this._refresh();
+                    return GLib.SOURCE_REMOVE;
                 });
             } else {
                 this._refresh();
@@ -284,6 +300,7 @@ export default class StageArc extends Extension {
         try { this._showTooltipEnabled = s.get_boolean('show-tooltip'); } catch (_) { this._showTooltipEnabled = true; }
         try { this._panelMargin = s.get_int('panel-margin'); } catch (_) { this._panelMargin = 8; }
         try { this._multiMonMode = s.get_string('multi-monitor-mode'); } catch (_) { this._multiMonMode = 'single'; }
+        try { this._reserveSpace = s.get_boolean('reserve-screen-space'); } catch (_) { this._reserveSpace = false; }
         this._geo        = this._computeGeo();
     }
 
@@ -393,6 +410,10 @@ export default class StageArc extends Extension {
         this._edge.set_position(geo.edgeX, geo.edgeY);
         Main.layoutManager.addChrome(this._edge);
 
+        // Strut: invisible panel that reserves workarea so windows don't overlap sidebar
+        this._strut = null;
+        this._updateStrut();
+
         this._edge.connect('enter-event',  () => { if (!this._isVisible) this._showPanel(); });
         this._panel.connect('enter-event', () => { if (!this._dragging) this._cancelHide(); });
         this._panel.connect('leave-event', () => { if (this._isVisible && !this._dragging) this._startHide(); });
@@ -410,8 +431,35 @@ export default class StageArc extends Extension {
         });
     }
 
+    _updateStrut() {
+        this._removeStrut();
+        if (!this._reserveSpace) return;
+
+        const geo = this._geo;
+        const mon = this._monitor;
+
+        // Create an invisible widget that reserves workarea space
+        let x, y, w, h;
+        if (this._pos === 'left') {
+            x = mon.x; y = mon.y; w = geo.panelW; h = mon.height;
+        } else if (this._pos === 'right') {
+            x = mon.x + mon.width - geo.panelW; y = mon.y; w = geo.panelW; h = mon.height;
+        } else { // bottom
+            x = mon.x; y = mon.y + mon.height - geo.panelH; w = mon.width; h = geo.panelH;
+        }
+
+        this._strut = new St.Widget({ width: w, height: h, opacity: 0, reactive: false });
+        this._strut.set_position(x, y);
+        Main.layoutManager.addChrome(this._strut, { affectsStruts: true, trackFullscreen: false });
+    }
+
+    _removeStrut() {
+        if (this._strut) { this._strut.destroy(); this._strut = null; }
+    }
+
     _destroyUI() {
         this._cancelHide();
+        this._removeStrut();
         if (this._edge)  { this._edge.destroy();  this._edge = null; }
         if (this._panel) { this._panel.destroy(); this._panel = null; }
     }

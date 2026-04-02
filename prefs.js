@@ -165,6 +165,9 @@ export default class StageArcPreferences extends ExtensionPreferences {
         panelGroup.add(this._switchRow(settings, 'persistent-mode',
             'Persistent Mode', 'Keep panel visible when edge area is clear of windows'));
 
+        panelGroup.add(this._switchRow(settings, 'reserve-screen-space',
+            'Reserve Screen Space', 'Maximized windows won\'t overlap the sidebar (macOS-style)'));
+
         panelGroup.add(this._spinRow(settings, 'hide-delay',
             'Hide Delay', 'Milliseconds before the panel hides after mouse leaves',
             100, 2000, 50));
