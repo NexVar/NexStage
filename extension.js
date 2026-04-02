@@ -1034,9 +1034,11 @@ export default class StageArc extends Extension {
                     });
                     const frontCard = grid._cards[0]?.card;
                     if (frontCard) {
-                        frontCard.style = frontCard.style.replace(
-                            /border: [^;]+;/, 'border: 1px solid rgba(255,255,255,0.08);'
-                        );
+                        // Restore highlight if active, otherwise reset to default
+                        const restoreBorder = (this._highlightActive && container._isActive)
+                            ? 'border: 1.5px solid rgba(120,175,255,0.5);'
+                            : 'border: 1px solid rgba(255,255,255,0.08);';
+                        frontCard.style = frontCard.style.replace(/border: [^;]+;/, restoreBorder);
                     }
                     // Cancel pending fan; start grace timer before collapsing
                     const g = container._grid;
@@ -1362,9 +1364,11 @@ export default class StageArc extends Extension {
                     });
                     const frontCard = grid._cards[0]?.card;
                     if (frontCard) {
-                        frontCard.style = frontCard.style.replace(
-                            /border: [^;]+;/, 'border: 1px solid rgba(255,255,255,0.08);'
-                        );
+                        // Restore highlight if active, otherwise reset to default
+                        const restoreBorder = (this._highlightActive && container._isActive)
+                            ? 'border: 1.5px solid rgba(120,175,255,0.5);'
+                            : 'border: 1px solid rgba(255,255,255,0.08);';
+                        frontCard.style = frontCard.style.replace(/border: [^;]+;/, restoreBorder);
                     }
                     // Cancel pending fan; start grace timer before collapsing
                     const g = container._grid;
