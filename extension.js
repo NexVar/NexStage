@@ -938,7 +938,7 @@ export default class StageArc extends Extension {
             if (this._highlightActive && isActive && grid._cards[0]) {
                 const fc = grid._cards[0].card;
                 fc.style = fc.style.replace(
-                    /border: [^;]+;/, `border: 1px solid rgba(120,170,255,0.45);`
+                    /border: [^;]+;/, `border: 1.5px solid rgba(120,175,255,0.5);`
                 );
             }
 
@@ -1269,7 +1269,7 @@ export default class StageArc extends Extension {
             if (this._highlightActive && isActive && grid._cards[0]) {
                 const fc = grid._cards[0].card;
                 fc.style = fc.style.replace(
-                    /border: [^;]+;/, 'border: 1px solid rgba(120,170,255,0.45);'
+                    /border: [^;]+;/, 'border: 1.5px solid rgba(120,175,255,0.5);'
                 );
             }
 
@@ -1817,29 +1817,37 @@ export default class StageArc extends Extension {
         });
 
         const items = [
-            { label: 'Close Window', action: () => {
-                win.delete(global.get_current_time());
-                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => { this._refresh(); return GLib.SOURCE_REMOVE; });
-            }},
-            { label: 'Minimize', action: () => {
-                win.minimize();
-                this._refresh();
+            { label: win.minimized ? 'Unminimize' : 'Minimize', action: () => {
+                if (win.minimized) { win.unminimize(); win.activate(global.get_current_time()); }
+                else win.minimize();
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 150, () => { this._refresh(); return GLib.SOURCE_REMOVE; });
             }},
             { label: win.is_above() ? 'Unpin from Top' : 'Always on Top', action: () => {
                 if (win.is_above()) win.unmake_above();
                 else win.make_above();
+                this._refresh();
+            }},
+            { label: 'Close Window', action: () => {
+                win.delete(global.get_current_time());
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => { this._refresh(); return GLib.SOURCE_REMOVE; });
             }},
         ];
 
         // Multi-window options
         if (group.windows.length > 1) {
+            const allMinimized = group.windows.every(w => w.minimized);
+            items.push({ label: allMinimized ? 'Unminimize All' : 'Minimize All', action: () => {
+                if (allMinimized) {
+                    group.windows.forEach(w => { w.unminimize(); w.raise(); });
+                    group.windows[0]?.activate(global.get_current_time());
+                } else {
+                    group.windows.forEach(w => w.minimize());
+                }
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 150, () => { this._refresh(); return GLib.SOURCE_REMOVE; });
+            }});
             items.push({ label: `Close All (${group.windows.length})`, action: () => {
                 group.windows.forEach(w => w.delete(global.get_current_time()));
                 GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => { this._refresh(); return GLib.SOURCE_REMOVE; });
-            }});
-            items.push({ label: 'Minimize All', action: () => {
-                group.windows.forEach(w => w.minimize());
-                this._refresh();
             }});
         }
 

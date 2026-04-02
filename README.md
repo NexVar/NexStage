@@ -1,51 +1,94 @@
-# Stage Manager Arc (GNOME Extension)
+# Mert Stage Manager
 
-A macOS-inspired window manager for GNOME featuring a smooth **arc carousel layout**.
+A macOS-inspired Stage Manager for GNOME Shell. Organize your windows with a sleek sidebar that shows live thumbnails of your running apps.
 
-https://github.com/user-attachments/assets/7740981e-a0f0-4fb1-bb11-f3d8c2525841
+## Features
 
-## Mouse & Trackpad Controls
+- **Arc & Vertical layouts** — choose between a curved carousel or a clean vertical stack
+- **Live thumbnails** — real-time window previews in the sidebar
+- **macOS-style animations** — cascade entrance, bounce transitions, smooth group switching
+- **Inactive card tilt** — non-active groups lean slightly for visual depth
+- **Close button** — hover to reveal, configurable position (left/right)
+- **App name labels** — crisp, counter-scaled text that stays sharp at any zoom
+- **Window count badge** — shows how many windows a group has
+- **Window title tooltip** — hover to see the focused window's title
+- **Right-click context menu** — Minimize/Unminimize, Always on Top, Close, Close All, Minimize All, Ungroup
+- **Active app highlight** — subtle blue border on the focused app
+- **Reserve screen space** — maximized windows won't overlap the sidebar (macOS-style)
+- **Persistent mode** — panel stays visible when the edge area is clear
+- **Multi-monitor** — single panel for all monitors (default) or separate per display
+- **Keyboard shortcuts** — toggle, navigate, activate, close
+- **Drag to reorder** — rearrange groups by dragging
+- **Drag to merge** — drag a group onto the active window to merge them
+- **Performance optimized** — idle-priority polling, fast-path skips when hidden
 
-### Window Actions
+## Installation
 
-- **Close window**
-  - Middle click (mouse wheel) on thumbnail  
-  - Trackpad: three-finger tap
+```bash
+git clone https://github.com/mertdlkr/mertstagemanager.git
+cd mertstagemanager
+mkdir -p ~/.local/share/gnome-shell/extensions/mertstagemanager@mertdlkr
+cp extension.js prefs.js metadata.json ~/.local/share/gnome-shell/extensions/mertstagemanager@mertdlkr/
+cp -r schemas ~/.local/share/gnome-shell/extensions/mertstagemanager@mertdlkr/
+glib-compile-schemas ~/.local/share/gnome-shell/extensions/mertstagemanager@mertdlkr/schemas/
+```
 
-- **Ungroup windows**
-  - Right click on thumbnail  
-  - Trackpad: two-finger tap
+Log out and log back in, then enable:
 
-https://github.com/user-attachments/assets/2ee350ad-063e-445a-9d26-19a68102cfe6
+```bash
+gnome-extensions enable mertstagemanager@mertdlkr
+```
 
+## Configuration
 
-##  Installation
+Open the extension preferences from GNOME Extensions app. Settings are organized into 4 pages:
 
-### Manual installation
+### Layout
+| Setting | Description |
+|---------|-------------|
+| Layout Mode | Arc carousel or vertical stack |
+| Panel Position | Left, right, or bottom edge |
+| Thumbnail Size | 60%–150% of base size |
+| Panel Margin | Distance from screen edge |
+| Angle Between Items | Arc mode spacing |
+| Vertical Spacing | Gap between thumbnails in vertical mode |
 
-git clone https://github.com/magoness/Stage-Manager-Gnome.git
-cd Stage-Manager-Gnome
-mkdir -p ~/.local/share/gnome-shell/extensions/stagemode-arc@mago
-cp -r * ~/.local/share/gnome-shell/extensions/stagemode-arc@mago
+### Behavior
+| Setting | Description |
+|---------|-------------|
+| Activate Mode | Raise only (keep others) or Focus (minimize others) |
+| Persistent Mode | Keep panel visible when edge is clear |
+| Reserve Screen Space | Maximized windows avoid the sidebar |
+| Hide Delay | How long before panel hides (100–2000ms) |
+| Max Recent Groups | Limit sidebar groups (3–12) |
+| Multi-Monitor Mode | Single panel or separate per display |
 
-Restart GNOME Shell: log out and log back in
+### Animation
+| Setting | Description |
+|---------|-------------|
+| Animation Speed | 50% (fast) to 200% (slow) |
+| Inactive Card Tilt | 0–15 degrees of lean |
+| Inactive Card Scale | 70%–100% size |
 
-##Configuration
+### Shortcuts
+Configurable keyboard shortcuts for toggle, navigate, activate, and close.
 
-You can customize the extension through GNOME Extensions settings:
+## Mouse Controls
 
-Layout mode (arc / vertical)
-Panel position (left / right / bottom)
-Thumbnail size
-Scroll speed
-Angle spacing
-Hide delay
-Persistent mode
-Window grouping behavior
-Some keybindings
+| Action | Effect |
+|--------|--------|
+| Left click | Activate the app group |
+| Middle click | Close the front window |
+| Right click | Context menu |
+| Scroll | Navigate between groups |
+| Drag | Reorder groups |
+| Drag to desktop | Merge with active window |
 
-https://github.com/user-attachments/assets/799cfed6-3b4f-47fa-ab56-9bdd1f8ac137
+## Requirements
 
-##Feedback
+- GNOME Shell 46, 47, 48, or 49
+- Wayland or X11
 
-If you try the extension, feel free to share your experience or suggestions.
+## License
+
+GPL-3.0
