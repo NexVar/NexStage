@@ -438,13 +438,16 @@ export default class StageArc extends Extension {
         // Watch maximize events on all windows
         const connectWin = (win) => {
             if (!win || win.skip_taskbar) return;
-            const sid = win.connect('notify::maximized-horizontally', () => {
-                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 80, () => {
+            const handler = () => {
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
                     this._adjustWindowForReserve(win);
                     return GLib.SOURCE_REMOVE;
                 });
-            });
-            this._reserveSigs.push({ obj: win, id: sid });
+            };
+            const sid1 = win.connect('notify::maximized-horizontally', handler);
+            const sid2 = win.connect('notify::maximized-vertically', handler);
+            this._reserveSigs.push({ obj: win, id: sid1 });
+            this._reserveSigs.push({ obj: win, id: sid2 });
         };
 
         // Connect to existing windows
@@ -467,6 +470,7 @@ export default class StageArc extends Extension {
 
     _adjustWindowForReserve(win) {
         if (!this._reserveSpace) return;
+        if (this._adjustingReserve) return; // prevent re-entry
         if (!win || win.skip_taskbar || win.is_attached_dialog()) return;
         if (win.is_fullscreen()) return;
         if (win.get_maximized() !== Meta.MaximizeFlags.BOTH) return;
@@ -494,10 +498,12 @@ export default class StageArc extends Extension {
             h = wa.height - this._panelSize;
         }
 
-        // Unmaximize, resize, so GNOME doesn't fight us
+        // Unmaximize, resize — guard flag prevents signal loop
+        this._adjustingReserve = true;
         win.unmaximize(Meta.MaximizeFlags.BOTH);
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 30, () => {
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
             win.move_resize_frame(false, x, y, w, h);
+            this._adjustingReserve = false;
             return GLib.SOURCE_REMOVE;
         });
     }
@@ -1938,15 +1944,16 @@ export default class StageArc extends Extension {
                 item.style = 'padding: 8px 16px; border-radius: 0; text-align: left;';
             });
             item.connect('clicked', () => {
-                // Close menu first, then run action
+                // Disconnect outside-click handler, close menu, run action
+                if (this._contextMenuClickId) {
+                    try { global.stage.disconnect(this._contextMenuClickId); } catch (_) {}
+                    this._contextMenuClickId = null;
+                }
                 if (this._contextMenu) {
                     this._contextMenu.destroy();
                     this._contextMenu = null;
                 }
-                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 30, () => {
-                    action();
-                    return GLib.SOURCE_REMOVE;
-                });
+                action();
             });
             menu.add_child(item);
         });
@@ -1955,18 +1962,24 @@ export default class StageArc extends Extension {
         Main.uiGroup.add_child(menu);
         this._contextMenu = menu;
 
-        // Auto-close on click outside
-        const clickId = global.stage.connect('button-press-event', () => {
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
-                if (this._contextMenu) {
-                    this._contextMenu.destroy();
-                    this._contextMenu = null;
-                }
-                global.stage.disconnect(clickId);
-                return GLib.SOURCE_REMOVE;
-            });
+        // Auto-close on click outside (but not on the menu itself)
+        const clickId = global.stage.connect('button-press-event', (_s, event) => {
+            const [ex, ey] = event.get_coords();
+            const [mx, my] = menu.get_transformed_position();
+            const mw = menu.width;
+            const mh = menu.height;
+            // If click is inside menu, let the menu items handle it
+            if (ex >= mx && ex <= mx + mw && ey >= my && ey <= my + mh)
+                return Clutter.EVENT_PROPAGATE;
+            // Click is outside — close menu
+            if (this._contextMenu) {
+                this._contextMenu.destroy();
+                this._contextMenu = null;
+            }
+            global.stage.disconnect(clickId);
             return Clutter.EVENT_PROPAGATE;
         });
+        this._contextMenuClickId = clickId;
     }
 
     // ── Activate ──────────────────────────────────────────────────────────────
