@@ -902,33 +902,39 @@ export default class StageArc extends Extension {
             // App name label (conditional)
             if (this._showAppLabel) {
                 const appName = group.app.get_name() || '';
-                const fontSize = Math.max(12, Math.round(13 * scale));
+                // Counter-scale: label renders at 1:1 pixel ratio regardless of container scale
+                const counterScale = isActive ? 1.0 : 1.0 / this._inactiveScale;
                 const nameLabel = new St.Label({
                     text: appName,
-                    style: `color: rgba(255,255,255,${isActive ? '1.0' : '0.78'}); `
-                         + `font-size: ${fontSize}px; `
+                    style: `color: rgba(255,255,255,${isActive ? '1.0' : '0.82'}); `
+                         + `font-size: 13px; `
                          + `font-weight: ${isActive ? '600' : '500'}; `
-                         + `font-family: system-ui, sans-serif; `
                          + `text-align: center; `
-                         + `text-shadow: 0 1px 2px rgba(0,0,0,0.5);`,
+                         + `text-shadow: 0 1px 3px rgba(0,0,0,0.6);`,
                     x_align: Clutter.ActorAlign.CENTER,
                 });
+                nameLabel.set_pivot_point(0.5, 0.0);
+                nameLabel.set_scale(counterScale, counterScale);
                 nameLabel.set_width(sW + sP * 2);
                 nameLabel.set_position(0, sH + sI - sOvl + Math.round(3 * scale));
                 nameLabel.clutter_text.set_ellipsize(3);
                 container.add_child(nameLabel);
+                container._nameLabel = nameLabel;
             }
 
             container.connect('notify::hover', () => {
                 if (container.hover) {
                     this._containers.forEach(c => {
                         const isThis = c === container;
+                        const tgtScale = isThis ? 1.05 : 0.90;
                         c.ease({
-                            scale_x: isThis ? 1.05 : 0.90,
-                            scale_y: isThis ? 1.05 : 0.90,
+                            scale_x: tgtScale, scale_y: tgtScale,
                             rotation_angle_z: isThis ? 0 : (c._isActive ? 0 : -this._inactiveTilt * 0.55),
                             duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                         });
+                        if (c._nameLabel)
+                            c._nameLabel.ease({ scale_x: 1 / tgtScale, scale_y: 1 / tgtScale,
+                                duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
                     });
                     const frontCard = grid._cards[0]?.card;
                     if (frontCard) {
@@ -996,8 +1002,8 @@ export default class StageArc extends Extension {
                                 this._containers.forEach(c => {
                                     c.ease({
                                         x: c._baseX, y: c._baseY,
-                                        scale_x: c._isActive ? 1.0 : 0.92,
-                                        scale_y: c._isActive ? 1.0 : 0.92,
+                                        scale_x: c._isActive ? 1.0 : this._inactiveScale,
+                                        scale_y: c._isActive ? 1.0 : this._inactiveScale,
                                         rotation_angle_z: c._isActive ? 0 : -this._inactiveTilt * 0.55,
                                         duration: 260, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                                     });
@@ -1011,8 +1017,8 @@ export default class StageArc extends Extension {
                         this._containers.forEach(c => {
                             c.ease({
                                 x: c._baseX, y: c._baseY,
-                                scale_x: c._isActive ? 1.0 : 0.92,
-                                scale_y: c._isActive ? 1.0 : 0.92,
+                                scale_x: c._isActive ? 1.0 : this._inactiveScale,
+                                scale_y: c._isActive ? 1.0 : this._inactiveScale,
                                 rotation_angle_z: c._isActive ? 0 : -this._inactiveTilt * 0.55,
                                 duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                             });
@@ -1222,35 +1228,41 @@ export default class StageArc extends Extension {
             this._buildIconRow(container, group, sW, sI, sOvl, sP, 1.0, grid);
             this._buildBadge(container, group, sW, sH, sP, 1.0);
 
-            // App name label (conditional)
+            // App name label (conditional) — counter-scaled for crisp rendering
             if (this._showAppLabel) {
                 const appName = group.app.get_name() || '';
+                const counterScale = isActive ? 1.0 : 1.0 / this._inactiveScale;
                 const nameLabel = new St.Label({
                     text: appName,
-                    style: `color: rgba(255,255,255,${isActive ? '1.0' : '0.78'}); `
+                    style: `color: rgba(255,255,255,${isActive ? '1.0' : '0.82'}); `
                          + `font-size: 13px; `
                          + `font-weight: ${isActive ? '600' : '500'}; `
-                         + `font-family: system-ui, sans-serif; `
                          + `text-align: center; `
-                         + `text-shadow: 0 1px 2px rgba(0,0,0,0.5);`,
+                         + `text-shadow: 0 1px 3px rgba(0,0,0,0.6);`,
                     x_align: Clutter.ActorAlign.CENTER,
                 });
+                nameLabel.set_pivot_point(0.5, 0.0);
+                nameLabel.set_scale(counterScale, counterScale);
                 nameLabel.set_width(sW + sP * 2);
                 nameLabel.set_position(0, sH + sI - sOvl + 3);
                 nameLabel.clutter_text.set_ellipsize(3);
                 container.add_child(nameLabel);
+                container._nameLabel = nameLabel;
             }
 
             container.connect('notify::hover', () => {
                 if (container.hover) {
                     this._containers.forEach(c => {
                         const isThis = c === container;
+                        const tgtScale = isThis ? 1.05 : 0.90;
                         c.ease({
-                            scale_x: isThis ? 1.05 : 0.90,
-                            scale_y: isThis ? 1.05 : 0.90,
+                            scale_x: tgtScale, scale_y: tgtScale,
                             rotation_angle_z: isThis ? 0 : (c._isActive ? 0 : -this._inactiveTilt * 0.55),
                             duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                         });
+                        if (c._nameLabel)
+                            c._nameLabel.ease({ scale_x: 1 / tgtScale, scale_y: 1 / tgtScale,
+                                duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
                     });
                     const frontCard = grid._cards[0]?.card;
                     if (frontCard) {
@@ -1319,8 +1331,8 @@ export default class StageArc extends Extension {
                                 this._containers.forEach(c => {
                                     c.ease({
                                         x: c._baseX, y: c._baseY,
-                                        scale_x: c._isActive ? 1.0 : 0.92,
-                                        scale_y: c._isActive ? 1.0 : 0.92,
+                                        scale_x: c._isActive ? 1.0 : this._inactiveScale,
+                                        scale_y: c._isActive ? 1.0 : this._inactiveScale,
                                         rotation_angle_z: c._isActive ? 0 : -this._inactiveTilt * 0.55,
                                         duration: 260, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                                     });
@@ -1335,8 +1347,8 @@ export default class StageArc extends Extension {
                         this._containers.forEach(c => {
                             c.ease({
                                 x: c._baseX, y: c._baseY,
-                                scale_x: c._isActive ? 1.0 : 0.92,
-                                scale_y: c._isActive ? 1.0 : 0.92,
+                                scale_x: c._isActive ? 1.0 : this._inactiveScale,
+                                scale_y: c._isActive ? 1.0 : this._inactiveScale,
                                 rotation_angle_z: c._isActive ? 0 : -this._inactiveTilt * 0.55,
                                 duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
                             });
@@ -1901,7 +1913,12 @@ export default class StageArc extends Extension {
             if (!target) group.appIds.forEach(id => { if (!target) target = this._groupStates.get(id)?.lastFocused; });
             (target ?? group.windows[0])?.activate(global.get_current_time());
 
-            this._hidePanel();
+            // Only hide if NOT in persistent mode, otherwise just refresh
+            if (this._persistMode) {
+                this._refresh();
+            } else {
+                this._hidePanel();
+            }
             return GLib.SOURCE_REMOVE;
         });
     }
