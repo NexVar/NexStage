@@ -95,7 +95,20 @@ export default class StageArc extends Extension {
         this._wsSwitchSig = global.workspace_manager.connect('active-workspace-changed', () => {
             this._disconnectWorkspaceSignals();
             this._connectWorkspaceSignals();
-            this._refresh();
+            // Fade out old content, refresh, fade back in
+            if (this._isVisible && this._containers.length > 0) {
+                this._containers.forEach(c => c.ease({ opacity: 0, duration: 120, mode: Clutter.AnimationMode.EASE_IN_QUAD }));
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 130, () => {
+                    this._refresh();
+                    this._containers.forEach(c => {
+                        c.opacity = 0;
+                        c.ease({ opacity: 255, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+                    });
+                    return GLib.SOURCE_REMOVE;
+                });
+            } else {
+                this._refresh();
+            }
         });
 
         this._overviewShowSig = Main.overview.connect('showing', () => {
@@ -162,7 +175,28 @@ export default class StageArc extends Extension {
     _connectWorkspaceSignals() {
         const ws = global.workspace_manager.get_active_workspace();
         if (!ws) return;
-        this._wsWinAddedSig = ws.connect('window-added', () => this._refresh());
+        this._wsWinAddedSig = ws.connect('window-added', () => {
+            const prevCount = this._containers.length;
+            this._refresh();
+            // Animate new container entrance after refresh
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 80, () => {
+                if (this._containers.length > prevCount && this._isVisible) {
+                    const newC = this._containers[this._containers.length - 1];
+                    if (newC) {
+                        newC.set_scale(0.5, 0.5);
+                        newC.opacity = 0;
+                        newC.ease({
+                            scale_x: newC._isActive ? 1.0 : this._inactiveScale,
+                            scale_y: newC._isActive ? 1.0 : this._inactiveScale,
+                            opacity: 255,
+                            duration: 280,
+                            mode: Clutter.AnimationMode.EASE_OUT_BACK,
+                        });
+                    }
+                }
+                return GLib.SOURCE_REMOVE;
+            });
+        });
         this._wsWinRemovedSig = ws.connect('window-removed', (_ws, removedWin) => {
             // Animate the removed window's container shrinking and sliding out
             const container = this._containers.find(c => {
