@@ -1,2 +1,11 @@
-# MertGSD agent files
-.agent/
+schemas/gschemas.compiled
+*.shell-extension.zip
+*.swp
+*~
+.DS_Store
+node_modules/
+.planning/
+.omx/
+.codex/
+.gsd/
+.nexgsd/

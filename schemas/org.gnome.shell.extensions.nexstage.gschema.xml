@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <schema id="org.gnome.shell.extensions.stagemode-arc"
-          path="/org/gnome/shell/extensions/stagemode-arc/">
+  <schema id="org.gnome.shell.extensions.nexstage"
+          path="/org/gnome/shell/extensions/nexstage/">
 
     <key name="layout-mode" type="s">
       <default>'arc'</default>
