@@ -1,0 +1,9 @@
+{
+  "session_id": "omx-1775522971492-80j0tz",
+  "started_at": "2026-04-07T00:49:31.542Z",
+  "cwd": "/home/mert/Yazılım/MertProjeler/gsdnpmdeneme",
+  "pid": 50197,
+  "platform": "linux",
+  "pid_start_ticks": 477196,
+  "pid_cmdline": "node /home/mert/.npm-global/bin/omx --madmax --high"
+}
